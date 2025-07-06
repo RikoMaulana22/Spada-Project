@@ -1,0 +1,20 @@
+{
+  "compilerOptions": {
+    "target": "es2020",                        // Versi JavaScript yang dikompilasi
+    "module": "commonjs",                      // Sistem modul Node.js
+    "rootDir": "./src",                        // Folder tempat file TypeScript berada
+    "outDir": "./dist",                        // Output hasil kompilasi
+    "strict": true,                            // Aktifkan pemeriksaan ketat
+    "esModuleInterop": true,                   // Diperlukan untuk impor module CommonJS (seperti express, dotenv)
+    "moduleResolution": "node",                // Resolusi module standar Node.js
+    "resolveJsonModule": true,                 // Izinkan import file .json
+    "skipLibCheck": true,                      // Lewati pemeriksaan deklarasi file
+    "forceConsistentCasingInFileNames": true ,
+    "types": ["node"] ,
+    "paths": {
+      "@/*": ["./*"]                        // Alias untuk impor dari folder src
+    } // Cegah perbedaan huruf besar/kecil di import
+  },
+  "include": ["src/**/*"],                     // Sertakan semua file .ts di dalam folder src
+  "exclude": ["node_modules", "dist"]          // Abaikan folder build dan dependency
+}

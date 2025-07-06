@@ -1,0 +1,14 @@
+{
+  "compilerOptions": {
+    "module": "commonjs",
+    "target": "es2020",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    // Baris ini secara eksplisit memberitahu TypeScript untuk memuat tipe Node.js
+    "types": ["node"]
+  },
+  "include": ["./*.ts"] // Hanya berlaku untuk file .ts di dalam folder prisma
+}

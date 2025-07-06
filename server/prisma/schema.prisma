@@ -1,0 +1,204 @@
+// server/prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  guru
+  siswa
+  admin
+}
+
+enum AssignmentType {
+  pilgan
+  esai
+  upload_gambar
+}
+
+model Setting {
+  id        Int      @id @default(autoincrement())
+  key       String   @unique // Contoh: "schoolName", "academicYear", "appLogo"
+  value     String   @db.Text
+  updatedAt DateTime @updatedAt
+}
+
+model User {
+  id                Int                @id @default(autoincrement())
+  username          String             @unique
+  password          String
+  fullName          String
+  role              Role
+  nisn              String?
+  createdAt         DateTime           @default(now())
+  classesTaught     Class[]            @relation("TeacherClasses")
+  memberships       Class_Members[]
+  submissions       Submission[]
+  attendanceRecords AttendanceRecord[]
+  announcements     Announcement[]
+  schedules         Schedule[]
+}
+
+model Announcement {
+  id        Int      @id @default(autoincrement())
+  title     String
+  content   String   @db.Text
+  authorId  Int
+  author    User     @relation(fields: [authorId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Subject {
+  id    Int     @id @default(autoincrement())
+  name  String
+  grade Int
+  Class Class[]
+  schedules         Schedule[]
+}
+
+model Class {
+  id          Int             @id @default(autoincrement())
+  name        String
+  description String?
+  createdAt   DateTime        @default(now())
+  teacher     User            @relation("TeacherClasses", fields: [teacherId], references: [id])
+  teacherId   Int
+  subject     Subject         @relation(fields: [subjectId], references: [id])
+  subjectId   Int
+  members     Class_Members[]
+  topics      Topic[]
+  schedules         Schedule[]
+}
+
+model Class_Members {
+  user      User @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  studentId Int
+  class     Class @relation(fields: [classId], references: [id], onDelete: Cascade)
+  classId   Int
+
+  @@id([studentId, classId])
+}
+
+model Attendance {
+  id         Int                @id @default(autoincrement())
+  title      String
+  openTime   DateTime
+  closeTime  DateTime
+  topicId    Int                @unique
+  topic      Topic              @relation(fields: [topicId], references: [id], onDelete: Cascade) // DIPERBAIKI
+  records    AttendanceRecord[]
+}
+
+model AttendanceRecord {
+  id           Int        @id @default(autoincrement())
+  timestamp    DateTime   @default(now())
+  studentId    Int
+  student      User       @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  attendanceId Int
+  attendance   Attendance @relation(fields: [attendanceId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, attendanceId])
+}
+
+model Topic {
+  id          Int          @id @default(autoincrement())
+  title       String
+  order       Int
+  createdAt   DateTime     @default(now())
+  classId     Int
+  class       Class        @relation(fields: [classId], references: [id], onDelete: Cascade)
+  attendance  Attendance?
+  materials   Material[]
+  assignments Assignment[]
+}
+
+model Material {
+  id        Int      @id @default(autoincrement())
+  title     String
+  fileUrl   String
+  createdAt DateTime @default(now())
+  topic     Topic?   @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  topicId   Int?     // DIPERBAIKI
+}
+
+model Assignment {
+  id           Int            @id @default(autoincrement())
+  title        String
+  description  String?        @db.Text
+  type         AssignmentType
+  dueDate      DateTime
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  topic        Topic?         @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  topicId      Int?           // DIPERBAIKI
+  startTime    DateTime?
+  endTime      DateTime?
+  timeLimit    Int?
+  attemptLimit Int?           @default(1)
+  passingGrade Int?           @default(70)
+  questions    Question[]
+  submissions  Submission[]
+}
+
+model Question {
+  id           Int        @id @default(autoincrement())
+  questionText String     @db.Text
+  assignment   Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  assignmentId Int
+  options      Option[]
+}
+
+model Option {
+  id         Int     @id @default(autoincrement())
+  optionText String
+  isCorrect  Boolean @default(false)
+  question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  questionId Int
+}
+
+model Submission {
+  id              Int        @id @default(autoincrement())
+  submissionDate  DateTime   @default(now())
+  score           Float?
+  essayAnswer     String?    @db.Text
+  fileUrl         String?
+  student         User       @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  studentId       Int
+  assignment      Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  assignmentId    Int
+  selectedOptions Json?
+}
+// --- ENUM BARU UNTUK HARI ---
+enum DayOfWeek {
+  SENIN
+  SELASA
+  RABU
+  KAMIS
+  JUMAT
+  SABTU
+  MINGGU
+}
+
+
+// --- MODEL BARU UNTUK JADWAL ---
+model Schedule {
+  id          Int       @id @default(autoincrement())
+  dayOfWeek   DayOfWeek // Menggunakan enum untuk hari
+  startTime   String    // Format "HH:mm", contoh: "08:00"
+  endTime     String    // Format "HH:mm", contoh: "09:30"
+  
+  classId     Int
+  class       Class     @relation(fields: [classId], references: [id], onDelete: Cascade)
+  
+  subjectId   Int
+  subject     Subject   @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  
+  teacherId   Int
+  teacher     User      @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+}
