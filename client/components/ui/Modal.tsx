@@ -15,7 +15,7 @@ export default function Modal({ isOpen, onClose, title, children }: ModalProps) 
 
   return (
     // Backdrop
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
+    <div className="fixed inset-0 bg-gray-300  bg-opacity-50 flex justify-center items-center z-50">
       {/* Konten Modal */}
       <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-md">
         <div className="flex justify-between items-center border-b pb-3 mb-4">

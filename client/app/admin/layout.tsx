@@ -50,7 +50,7 @@ export default function AdminLayout({
   
   // Jika sudah pasti admin, tampilkan layout lengkap.
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-screen bg-white">
       <aside className="w-64 bg-gray-800 text-white p-4 flex flex-col">
         <h1 className="text-2xl font-bold mb-8">{settings?.schoolName || 'Admin Panel'}</h1>
         

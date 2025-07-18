@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { createAttendance, markAttendanceRecord } from '../controllers/attendance.controller';
+import { createAttendance, markAttendanceRecord, getAttendanceDetails  } from '../controllers/attendance.controller';
 import { checkRole } from '../middlewares/role.middleware';
 
 const router = Router();
@@ -8,6 +8,8 @@ const router = Router();
 // POST /api/attendance/topic/:topicId
 router.post('/topic/:topicId', checkRole('guru'), createAttendance);
 router.post('/:id/record', checkRole('siswa'), markAttendanceRecord);
+router.get('/:id', getAttendanceDetails); // <-- Pastikan baris ini ada
+
 
 
 export default router;

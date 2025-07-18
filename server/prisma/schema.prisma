@@ -19,6 +19,7 @@ enum AssignmentType {
   pilgan
   esai
   upload_gambar
+  link_google
 }
 
 model Setting {
@@ -33,6 +34,7 @@ model User {
   username          String             @unique
   password          String
   fullName          String
+  email             String   @unique
   role              Role
   nisn              String?
   createdAt         DateTime           @default(now())
@@ -49,7 +51,7 @@ model Announcement {
   title     String
   content   String   @db.Text
   authorId  Int
-  author    User     @relation(fields: [authorId], references: [id])
+  author    User     @relation(fields: [authorId], references: [id], onDelete: SetNull)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -67,7 +69,7 @@ model Class {
   name        String
   description String?
   createdAt   DateTime        @default(now())
-  teacher     User            @relation("TeacherClasses", fields: [teacherId], references: [id])
+  teacher     User            @relation("TeacherClasses", fields: [teacherId], references: [id], onDelete: SetNull)
   teacherId   Int
   subject     Subject         @relation(fields: [subjectId], references: [id])
   subjectId   Int
@@ -121,7 +123,9 @@ model Topic {
 model Material {
   id        Int      @id @default(autoincrement())
   title     String
-  fileUrl   String
+  fileUrl   String?
+  content     String?
+  youtubeUrl  String? 
   createdAt DateTime @default(now())
   topic     Topic?   @relation(fields: [topicId], references: [id], onDelete: Cascade)
   topicId   Int?     // DIPERBAIKI
@@ -137,6 +141,7 @@ model Assignment {
   updatedAt    DateTime       @updatedAt
   topic        Topic?         @relation(fields: [topicId], references: [id], onDelete: Cascade)
   topicId      Int?           // DIPERBAIKI
+  externalUrl  String?        @db.Text // <-- TAMBAHKAN KOLOM BARU INI
   startTime    DateTime?
   endTime      DateTime?
   timeLimit    Int?

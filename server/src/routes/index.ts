@@ -9,12 +9,13 @@ import adminRoutes from './admin.routes';
 import materialRoutes from './material.routes'; // <-- 1. TAMBAHKAN IMPOR INI
 import { authenticate } from '../middlewares/auth.middleware';
 import { checkRole } from '../middlewares/role.middleware';
-import topicRoutes from './topic.routes'; // <-- IMPORT BARU
-import attendanceRoutes from './attendance.routes'; // <-- IMPORT BARU
-import submissionRoutes from './submission.routes'; // <-- IMPORT BARU
-import scheduleRoutes from './schedule.routes'; // <-- IMPORT BARU
+import topicRoutes from './topic.routes';
+import attendanceRoutes from './attendance.routes';
+import submissionRoutes from './submission.routes';
+import scheduleRoutes from './schedule.routes';
 import announcementRoutes from './announcement.routes';
-import settingRoutes from './setting.routes'; // <-- IMPORT BARU
+import settingRoutes from './setting.routes';
+
 
 
 

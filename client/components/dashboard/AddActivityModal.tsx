@@ -20,6 +20,7 @@ export default function AddActivityModal({
   onSelectAttendance,
 }: AddActivityModalProps) {
   return (
+    <div className="grid grid-cols-1 bg-white text-gray-800 md:grid-cols-3 gap-4 text-center">
     <Modal isOpen={isOpen} onClose={onClose} title="Pilih Aktivitas atau Sumber Daya">
       <div className="grid grid-cols-1 bg-gray-200 text-gray-800 md:grid-cols-3 gap-4 text-center">
         {/* Tombol Tambah Materi */}
@@ -50,5 +51,6 @@ export default function AddActivityModal({
         </button>
       </div>
     </Modal>
+    </div>
   );
 }

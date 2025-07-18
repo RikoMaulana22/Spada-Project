@@ -47,24 +47,24 @@ export default function LoginPage() {
   return (
      <div className="flex min-h-screen items-center justify-center bg-gray-100">
       <div className="w-full max-w-md p-8 space-y-6 bg-white rounded-lg shadow-md">
-        <h1 className="text-2xl font-bold text-center">Masuk ke SPADA</h1>
+        <h1 className="text-2xl font-bold  text-gray-800 text-center">Masuk ke SPADA</h1>
         <form onSubmit={handleSubmit} className="space-y-6">
           {error && <p className="text-red-500 text-sm text-center">{error}</p>}
           
           <div>
             <label className="block text-sm font-medium text-gray-700">Username</label>
-            <input type="text" value={username} onChange={(e) => setUsername(e.target.value)} required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" />
+            <input type="text" value={username} onChange={(e) => setUsername(e.target.value)} required className="mt-1 block w-full px-3 py-2 border border-gray-600 text-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700">Password</label>
-            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" />
+            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required className="mt-1 block w-full px-3 py-2 border border-gray-600 text-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" />
           </div>
 
           <button type="submit" disabled={isLoading} className="w-full py-2 px-4 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 disabled:bg-blue-300">
             {isLoading ? 'Memproses...' : 'Masuk'}
           </button>
         </form>
-        <p className="text-center text-sm">
+        <p className="text-center text-sm text-gray-600">
           Belum punya akun? <Link href="/register" className="text-blue-600 hover:underline">Daftar di sini</Link>
         </p>
       </div>

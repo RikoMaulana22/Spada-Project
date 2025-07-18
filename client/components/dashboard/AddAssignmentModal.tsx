@@ -1,14 +1,14 @@
-// Path: client/components/dashboard/AddAssignmentModal.tsx
 'use client';
 
 import { useState, FormEvent, useEffect } from 'react';
 import apiClient from '@/lib/axios';
 import Modal from '@/components/ui/Modal';
+import toast from 'react-hot-toast';
+import { FaPlus, FaTrash } from 'react-icons/fa';
 
-// Definisikan tipe secara manual di frontend agar sesuai dengan enum di Prisma
-export type AssignmentType = 'pilgan' | 'esai' | 'upload_gambar';
+// Definisikan tipe data secara lokal untuk komponen ini
+type AssignmentType = 'pilgan' | 'esai' | 'link_google';
 
-// Definisikan tipe untuk form state
 interface OptionState {
   optionText: string;
   isCorrect: boolean;
@@ -17,15 +17,13 @@ interface QuestionState {
   questionText: string;
   options: OptionState[];
 }
-
-// PERUBAHAN 1: Interface state diperbarui
 interface AssignmentState {
   title: string;
   description: string;
   type: AssignmentType;
   dueDate: string;
+  externalUrl: string;
   questions: QuestionState[];
-  // --- FIELD STATE BARU ---
   startTime: string;
   endTime: string;
   timeLimit: number;
@@ -33,20 +31,20 @@ interface AssignmentState {
   passingGrade: number;
 }
 
-// PERUBAHAN 2: State awal diperbarui
+// State awal untuk form saat pertama kali dibuka atau di-reset
 const initialQuestionState: QuestionState = { questionText: '', options: [{ optionText: '', isCorrect: true }] };
 const initialAssignmentState: AssignmentState = {
   title: '',
   description: '',
-  type: 'pilgan', // Default ke pilihan ganda
+  type: 'pilgan',
   dueDate: '',
+  externalUrl: '',
   questions: [initialQuestionState],
-  // --- STATE AWAL BARU ---
   startTime: '',
   endTime: '',
-  timeLimit: 60, // Default 60 menit
-  attemptLimit: 1, // Default 1 kali
-  passingGrade: 70, // Default 70
+  timeLimit: 60,
+  attemptLimit: 1,
+  passingGrade: 70,
 };
 
 interface AddAssignmentModalProps {
@@ -59,29 +57,22 @@ interface AddAssignmentModalProps {
 export default function AddAssignmentModal({ isOpen, onClose, topicId, onAssignmentAdded }: AddAssignmentModalProps) {
   const [assignment, setAssignment] = useState<AssignmentState>(initialAssignmentState);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
+  // Reset form setiap kali modal dibuka
   useEffect(() => {
     if (isOpen) {
       setAssignment(initialAssignmentState);
-      setError(null);
-      setIsLoading(false);
     }
   }, [isOpen]);
 
-  // PERUBAHAN 3: Handler yang lebih umum untuk semua input form utama
+  // Handler umum untuk input form utama
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
-    // Untuk input number, konversi nilainya
     const finalValue = type === 'number' ? parseInt(value, 10) || 0 : value;
-
-    setAssignment(prev => ({
-      ...prev,
-      [name]: finalValue,
-    }));
+    setAssignment(prev => ({ ...prev, [name]: finalValue }));
   };
 
-  // Handler untuk pertanyaan (tidak berubah)
+  // --- Handler untuk Pertanyaan ---
   const handleQuestionChange = (index: number, value: string) => {
     const updatedQuestions = [...assignment.questions];
     updatedQuestions[index].questionText = value;
@@ -89,144 +80,161 @@ export default function AddAssignmentModal({ isOpen, onClose, topicId, onAssignm
   };
 
   const addQuestion = () => {
-    setAssignment(prev => ({ ...prev, questions: [...prev.questions, initialQuestionState] }));
+    setAssignment(prev => ({
+      ...prev,
+      questions: [...prev.questions, { questionText: '', options: [{ optionText: '', isCorrect: true }] }]
+    }));
   };
 
   const removeQuestion = (index: number) => {
-    const updatedQuestions = [...assignment.questions];
-    updatedQuestions.splice(index, 1);
+    const updatedQuestions = assignment.questions.filter((_, qIndex) => qIndex !== index);
     setAssignment(prev => ({ ...prev, questions: updatedQuestions }));
   };
 
-  // Handler untuk Pilihan Jawaban (tidak berubah)
+  // --- Handler untuk Pilihan Jawaban ---
   const handleOptionChange = (qIndex: number, oIndex: number, value: string) => {
     const updatedQuestions = [...assignment.questions];
     updatedQuestions[qIndex].options[oIndex].optionText = value;
     setAssignment(prev => ({ ...prev, questions: updatedQuestions }));
   };
-  
-  const setCorrectOption = (qIndex: number, oIndex: number) => {
-    const updatedQuestions = [...assignment.questions];
-    updatedQuestions[qIndex].options.forEach((opt, index) => {
-      opt.isCorrect = index === oIndex;
-    });
-    setAssignment(prev => ({...prev, questions: updatedQuestions}));
-  }
 
   const addOption = (qIndex: number) => {
     const updatedQuestions = [...assignment.questions];
     updatedQuestions[qIndex].options.push({ optionText: '', isCorrect: false });
     setAssignment(prev => ({ ...prev, questions: updatedQuestions }));
   };
-  
-  const removeOption = (qIndex: number, oIndex: number) => {
-     const updatedQuestions = [...assignment.questions];
-     updatedQuestions[qIndex].options.splice(oIndex, 1);
-     setAssignment(prev => ({...prev, questions: updatedQuestions}));
-  }
 
+  const removeOption = (qIndex: number, oIndex: number) => {
+    const updatedOptions = assignment.questions[qIndex].options.filter((_, optIndex) => optIndex !== oIndex);
+    const updatedQuestions = [...assignment.questions];
+    updatedQuestions[qIndex].options = updatedOptions;
+    setAssignment(prev => ({ ...prev, questions: updatedQuestions }));
+  };
+
+  const setCorrectOption = (qIndex: number, oIndex: number) => {
+    const updatedQuestions = [...assignment.questions];
+    updatedQuestions[qIndex].options.forEach((opt, index) => {
+      opt.isCorrect = index === oIndex;
+    });
+    setAssignment(prev => ({...prev, questions: updatedQuestions}));
+  };
+
+  // --- FUNGSI SIMPAN TUGAS (handleSubmit) YANG SUDAH LENGKAP ---
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!topicId) return;
 
+    const loadingToast = toast.loading('Menyimpan tugas...');
     setIsLoading(true);
-    setError(null);
+    
+    // Siapkan payload yang akan dikirim ke backend
+    const payload = { ...assignment };
+    if (payload.type !== 'link_google') {
+        delete (payload as any).externalUrl;
+    }
+    if (payload.type === 'link_google') {
+        payload.questions = [];
+    } else if (payload.type === 'esai') {
+        // Untuk esai, kita hanya butuh teks pertanyaannya saja, bukan pilihan jawaban
+        payload.questions = [{ questionText: payload.questions[0]?.questionText || 'Jelaskan...', options: [] }];
+    }
+
     try {
-      await apiClient.post(`/assignments/topic/${topicId}`, assignment);
-      onAssignmentAdded();
-      onClose();
+      await apiClient.post(`/assignments/topic/${topicId}`, payload);
+      toast.success('Tugas berhasil dibuat!', { id: loadingToast });
+      onAssignmentAdded(); // Refresh data di halaman utama
+      onClose(); // Tutup modal
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Gagal membuat tugas.');
+      toast.error(err.response?.data?.message || 'Gagal membuat tugas.', { id: loadingToast });
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Isi Pengaturan Kuis (Post Test/UTS/UAS)">
-      <form onSubmit={handleSubmit} className="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
-        {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
-        {/* Form utama */}
-        <div>
-          <label className="block text-sm font-medium">Judul Tugas</label>
-          <input type="text" name="title" value={assignment.title} onChange={handleChange} required className="mt-1 w-full form-input" placeholder="Contoh: Post Test Modul 3"/>
-        </div>
-        <div>
-          <label className="block text-sm font-medium">Deskripsi</label>
-          <textarea name="description" value={assignment.description} onChange={handleChange} rows={3} className="mt-1 w-full form-input" placeholder="Petunjuk pengerjaan atau keterangan"></textarea>
-        </div>
-        
-        {/* PERUBAHAN 4: Form untuk pengaturan baru ditambahkan */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t pt-4">
-          <div>
-            <label className="block text-sm font-medium">Tipe Tugas</label>
-            <select name="type" value={assignment.type} onChange={handleChange} className="mt-1 w-full form-input">
-              <option value="esai">Esai</option>
-              <option value="pilgan">Pilihan Ganda</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium">Tanggal Tenggat</label>
-            <input type="datetime-local" name="dueDate" value={assignment.dueDate} onChange={handleChange} required className="mt-1 w-full form-input"/>
-          </div>
-          <div>
-            <label className="block text-sm font-medium">Waktu Mulai</label>
-            <input type="datetime-local" name="startTime" value={assignment.startTime} onChange={handleChange} className="form-input w-full"/>
-          </div>
-          <div>
-            <label className="block text-sm font-medium">Waktu Tutup</label>
-            <input type="datetime-local" name="endTime" value={assignment.endTime} onChange={handleChange} className="form-input w-full"/>
-          </div>
-          <div>
-            <label className="block text-sm font-medium">Batas Waktu (menit)</label>
-            <input type="number" name="timeLimit" value={assignment.timeLimit} onChange={handleChange} className="form-input w-full"/>
-          </div>
-          <div>
-            <label className="block text-sm font-medium">Batas Percobaan</label>
-            <input type="number" name="attemptLimit" value={assignment.attemptLimit} onChange={handleChange} className="form-input w-full"/>
-          </div>
-          <div>
-            <label className="block text-sm font-medium">Nilai Minimum</label>
-            <input type="number" name="passingGrade" value={assignment.passingGrade} onChange={handleChange} className="form-input w-full"/>
-          </div>
-        </div>
+            <div className="space-y-4 p-4 text-gray-800  rounded-lg">
 
-        {/* Form Pertanyaan Dinamis (Tidak berubah) */}
-        <div className="space-y-4 pt-4 border-t">
-          <h3 className="text-lg font-semibold">Soal Kuis</h3>
-          {assignment.questions.map((q, qIndex) => (
-            <div key={qIndex} className="p-3 border rounded-md bg-gray-50">
-              <div className="flex justify-between items-center mb-2">
-                <label className="block text-sm font-bold">Pertanyaan {qIndex + 1}</label>
-                {assignment.questions.length > 1 && <button type="button" onClick={() => removeQuestion(qIndex)} className="text-red-500 text-xs">Hapus</button>}
-              </div>
-              <textarea value={q.questionText} onChange={(e) => handleQuestionChange(qIndex, e.target.value)} required rows={2} className="w-full form-input"></textarea>
-              
-              {assignment.type === 'pilgan' && (
-                <div className="mt-2 space-y-2">
-                   {q.options.map((opt, oIndex) => (
-                     <div key={oIndex} className="flex items-center gap-2">
-                       <input type="radio" name={`correct_option_${qIndex}`} checked={opt.isCorrect} onChange={() => setCorrectOption(qIndex, oIndex)} className="form-radio"/>
-                       <input type="text" value={opt.optionText} onChange={(e) => handleOptionChange(qIndex, oIndex, e.target.value)} required className="w-full form-input form-input-sm" placeholder={`Pilihan ${oIndex + 1}`} />
-                       {q.options.length > 1 && <button type="button" onClick={() => removeOption(qIndex, oIndex)} className="text-red-500 text-xs">X</button>}
-                     </div>
-                   ))}
-                   <button type="button" onClick={() => addOption(qIndex)} className="text-blue-600 text-sm mt-1">+ Tambah Pilihan</button>
-                </div>
-              )}
+    <Modal isOpen={isOpen} onClose={onClose} title="Buat Tugas / Kuis Baru">
+      <form onSubmit={handleSubmit} className="space-y-4 max-h-[80vh] overflow-y-auto  text-gray-800 p-1">
+        {/* Detail Tugas Utama */}
+        <div className="space-y-4 p-4 border rounded-lg">
+            <h3 className="font-semibold text-lg">Detail Tugas</h3>
+            <div>
+                <label className="block text-sm font-medium">Judul</label>
+                <input type="text" name="title" value={assignment.title} onChange={handleChange} required className="form-input border  w-full mt-1" />
             </div>
-          ))}
-          <button type="button" onClick={addQuestion} className="text-sm font-semibold text-blue-700 hover:text-blue-900">+ Tambah Pertanyaan</button>
+            <div>
+                <label className="block text-sm font-medium">Deskripsi</label>
+                <textarea name="description" value={assignment.description} onChange={handleChange} rows={3} className="form-textarea border w-full mt-1"></textarea>
+            </div>
+            <div>
+                <label className="block text-sm font-medium">Tipe Tugas</label>
+                <select name="type" value={assignment.type} onChange={handleChange} className="form-select  border mt-1 w-full">
+                    <option value="pilgan">Pilihan Ganda</option>
+                    <option value="esai">Esai</option>
+                    <option value="link_google">Tugas Link (Google Docs, dll)</option>
+                </select>
+            </div>
+            {assignment.type === 'link_google' && (
+                <div>
+                    <label className="block text-sm font-medium">URL Eksternal</label>
+                    <input type="url" name="externalUrl" value={assignment.externalUrl} onChange={handleChange} required className="form-input w-full mt-1" placeholder="https://docs.google.com/..."/>
+                </div>
+            )}
+             <div>
+                <label className="block text-sm font-medium">Tanggal Tenggat</label>
+                <input type="datetime-local" name="dueDate" value={assignment.dueDate} onChange={handleChange} required className="form-input mt-1 w-full"/>
+            </div>
         </div>
 
-        {/* Tombol Aksi (Tidak berubah) */}
+        {/* Form Pertanyaan Dinamis (jika bukan tugas link) */}
+        {(assignment.type === 'pilgan' || assignment.type === 'esai') && (
+            <div className="space-y-4 p-4 border rounded-lg">
+                <h3 className="font-semibold text-lg">Soal</h3>
+                {assignment.questions.map((q, qIndex) => (
+                    <div key={qIndex} className="p-4 border rounded-md bg-gray-50/50 space-y-3">
+                        <div className="flex justify-between items-center">
+                            <label className="font-bold">Pertanyaan {qIndex + 1}</label>
+                            {assignment.questions.length > 1 && (
+                                <button type="button" onClick={() => removeQuestion(qIndex)} className="text-red-500 hover:text-red-700"><FaTrash /></button>
+                            )}
+                        </div>
+                        <textarea value={q.questionText} onChange={(e) => handleQuestionChange(qIndex, e.target.value)} required rows={3} className="w-full border form-input" />
+                        
+                        {assignment.type === 'pilgan' && (
+                            <div className="space-y-2 pt-2 border-t">
+                                <label className="text-sm font-medium">Pilihan Jawaban (tandai yang benar)</label>
+                                {q.options.map((opt, oIndex) => (
+                                    <div key={oIndex} className="flex items-center gap-2">
+                                        <input type="radio" name={`correct_option_${qIndex}`} checked={opt.isCorrect} onChange={() => setCorrectOption(qIndex, oIndex)} className="form-radio"/>
+                                        <input type="text" value={opt.optionText} onChange={(e) => handleOptionChange(qIndex, oIndex, e.target.value)} required className="form-input flex-grow" />
+                                        {q.options.length > 1 && (
+                                            <button type="button" onClick={() => removeOption(qIndex, oIndex)} className="text-gray-400 hover:text-red-600 p-1"><FaTrash size={12} /></button>
+                                        )}
+                                    </div>
+                                ))}
+                                <button type="button" onClick={() => addOption(qIndex)} className="text-blue-600 text-sm font-semibold flex items-center gap-1 mt-2">
+                                    <FaPlus size={10} /> Tambah Pilihan
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                ))}
+                {assignment.type !== 'esai' && (
+                  <button type="button" onClick={addQuestion} className="text-blue-700 font-semibold text-sm">+ Tambah Pertanyaan</button>
+                )}
+            </div>
+        )}
+
         <div className="flex justify-end gap-4 mt-6 pt-4 border-t">
-          <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300">Batal</button>
-          <button type="submit" disabled={isLoading} className="px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 disabled:bg-blue-300">
-            {isLoading ? 'Menyimpan...' : 'Simpan dan Tampilkan'}
+          <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-200 rounded-lg">Batal</button>
+          <button type="submit" disabled={isLoading} className="px-6 py-2 bg-blue-600 text-white font-semibold rounded-lg">
+            {isLoading ? 'Menyimpan...' : 'Simpan Tugas'}
           </button>
         </div>
       </form>
     </Modal>
+    </div>
+            
   );
 }

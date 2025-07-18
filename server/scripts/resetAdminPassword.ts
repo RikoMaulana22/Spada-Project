@@ -6,14 +6,14 @@ const prisma = new PrismaClient();
 async function main() {
     // --- GANTI DETAIL DI BAWAH INI ---
     const usernameToUpdate = "admin"; // Ganti dengan username yang mau direset
-    const newPassword = "adminpassword123"; // Atur password baru yang Anda inginkan
+    const newPassword = "admin123"; // Atur password baru yang Anda inginkan
     // ------------------------------------
 
     console.log(`Mereset password untuk pengguna: ${usernameToUpdate}...`);
     
     // Hash password baru
     const hashedPassword = await bcrypt.hash(newPassword, 10);
-
+    
     // Update pengguna di database
     const updatedUser = await prisma.user.update({
         where: {
@@ -33,6 +33,7 @@ main()
         console.error(e);
         process.exit(1);
     })
+
     .finally(async () => {
         await prisma.$disconnect();
     });

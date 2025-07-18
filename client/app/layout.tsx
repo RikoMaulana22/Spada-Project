@@ -12,7 +12,7 @@ const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "SPADA - Sistem Pembelajaran Daring",
-  description: "Universitas Teknokrat Indonesia",
+  description: "SMP NEGERI SATU ATAP 1 WAY TENONG",
 };
 
 export default function RootLayout({
@@ -22,7 +22,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="h-full">
-      <body className={`${inter.className} flex flex-col h-full bg-gray-50`}>
+      <body className={`${inter.className} flex flex-col  h-full bg-white`}>
         <AuthProvider>
           {/* --- 2. TAMBAHKAN Toaster DI SINI --- */}
           {/* Posisi terbaik adalah di dalam provider tapi di luar layout utama */}

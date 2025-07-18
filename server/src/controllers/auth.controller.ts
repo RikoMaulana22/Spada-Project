@@ -3,29 +3,68 @@ import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { TokenPayload } from '../middlewares/auth.middleware'; // Impor tipe payload
+import { AuthRequest } from '../middlewares/auth.middleware';
+
 
 const prisma = new PrismaClient();
 
 // Fungsi registerUser tidak perlu diubah, sudah benar
 export const registerUser = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-  try {
-    const { username, password, fullName, role } = req.body;
-    if (!username || !password || !fullName || !role) {
-      res.status(400).json({ message: 'Semua field wajib diisi' });
-      return;
+    try {
+        // 1. Ambil 'email' dari request body
+        const { username, email, password, fullName, role } = req.body;
+
+        // 2. Tambahkan validasi untuk 'email'
+        if (!username || !email || !password || !fullName || !role) {
+            res.status(400).json({ message: 'Semua field wajib diisi' });
+            return;
+        }
+
+        // 3. Cek apakah username atau email sudah ada
+        const existingUser = await prisma.user.findFirst({
+            where: {
+                OR: [
+                    { username: username },
+                    { email: email }
+                ]
+            }
+        });
+        
+        if (existingUser) {
+            // Beri pesan yang spesifik tergantung mana yang sudah ada
+            const message = existingUser.username === username ? 'Username sudah digunakan' : 'Email sudah digunakan';
+            res.status(409).json({ message });
+            return;
+        }
+
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        // 4. Sertakan 'email' saat membuat user baru
+        const newUser = await prisma.user.create({
+            data: {
+                username,
+                email, // <-- Sertakan email di sini
+                password: hashedPassword,
+                fullName,
+                role
+            }
+        });
+        
+        // Pilih data yang akan dikirim kembali (tanpa password)
+        const userToReturn = {
+            id: newUser.id,
+            username: newUser.username,
+            email: newUser.email,
+            fullName: newUser.fullName,
+            role: newUser.role
+        };
+
+        res.status(201).json({ message: 'Registrasi berhasil!', user: userToReturn });
+
+    } catch (error) {
+        console.error('Error saat registrasi:', error);
+        res.status(500).json({ message: 'Terjadi kesalahan pada server' });
     }
-    const existingUser = await prisma.user.findUnique({ where: { username } });
-    if (existingUser) {
-      res.status(409).json({ message: 'Username sudah digunakan' });
-      return;
-    }
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const newUser = await prisma.user.create({ data: { username, password: hashedPassword, fullName, role } });
-    res.status(201).json({ message: 'Registrasi berhasil!', user: { id: newUser.id, username: newUser.username, fullName: newUser.fullName, role: newUser.role } });
-  } catch (error) {
-    console.error('Error saat registrasi:', error);
-    res.status(500).json({ message: 'Terjadi kesalahan pada server' });
-  }
 };
 
 
@@ -114,5 +153,38 @@ export const loginAdmin = async (req: Request, res: Response): Promise<void> => 
     } catch (error) {
         console.error('Error saat login admin:', error);
         res.status(500).json({ message: 'Terjadi kesalahan pada server' });
+    }
+};
+
+export const getMe = async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+        const userId = req.user?.userId;
+
+        if (!userId) {
+            res.status(401).json({ message: "Otentikasi gagal." });
+            return;
+        }
+
+        const user = await prisma.user.findUnique({
+            where: { id: userId },
+            // Pilih hanya data yang aman untuk dikirim ke frontend
+            select: {
+                id: true,
+                fullName: true,
+                email: true,
+                role: true,
+            }
+        });
+
+        if (!user) {
+            res.status(404).json({ message: "Pengguna tidak ditemukan." });
+            return;
+        }
+
+        res.status(200).json(user);
+
+    } catch (error) {
+        console.error("Error saat mengambil data pengguna:", error);
+        res.status(500).json({ message: "Terjadi kesalahan pada server." });
     }
 };

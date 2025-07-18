@@ -10,56 +10,85 @@ interface CreateAssignmentBody {
     description?: string;
     type: AssignmentType;
     dueDate: string;
-    questions: {
+    questions?: {
         questionText: string;
-        options?: {
-            optionText: string;
-            isCorrect: boolean;
-        }[];
+        options?: { optionText: string; isCorrect: boolean; }[];
     }[];
+    externalUrl?: string;
+    startTime?: string;
+    endTime?: string;
+    timeLimit?: number;
+    attemptLimit?: number;
+    passingGrade?: number;
 }
 
-// FUNGSI BARU: Guru membuat tugas baru di dalam sebuah TOPIK
-export const createAssignmentForTopic = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
-    // PERUBAHAN: Mengambil topicId, bukan classId
+export const createAssignmentForTopic = async (req: AuthRequest, res: Response): Promise<void> => {
     const { topicId } = req.params;
-    const { title, description, type, dueDate, questions }: CreateAssignmentBody = req.body;
+    const { title, description, type, dueDate, questions, externalUrl,
+        startTime, endTime, timeLimit, attemptLimit, passingGrade }: CreateAssignmentBody = req.body;
 
-    if (!title || !type || !dueDate || !questions || questions.length === 0) {
-        res.status(400).json({ message: "Data tidak lengkap. Judul, tipe, tanggal, dan minimal satu pertanyaan wajib diisi." });
+    // --- VALIDASI YANG LEBIH KETAT SEBELUM TRANSAKSI ---
+    if (!title || !dueDate || !type) {
+        res.status(400).json({ message: "Judul, tanggal tenggat, dan tipe tugas wajib diisi." });
         return;
     }
 
+    if (type === 'link_google' && !externalUrl) {
+        res.status(400).json({ message: "URL tugas wajib diisi untuk tipe Tugas Link." });
+        return;
+    }
+
+    if ((type === 'pilgan' || type === 'esai')) {
+        if (!questions || questions.length === 0) {
+            res.status(400).json({ message: "Minimal satu pertanyaan wajib diisi." });
+            return;
+        }
+        for (const q of questions) {
+            if (!q.questionText || !q.questionText.trim()) {
+                res.status(400).json({ message: "Setiap pertanyaan harus memiliki teks soal." });
+                return;
+            }
+            if (type === 'pilgan' && (!q.options || q.options.length < 1)) {
+                 res.status(400).json({ message: "Setiap soal pilihan ganda harus memiliki minimal satu pilihan jawaban." });
+                 return;
+            }
+        }
+    }
+    // --- AKHIR VALIDASI ---
+
     try {
         const newAssignment = await prisma.$transaction(async (tx) => {
-            // 1. Buat Assignment utama, terhubung ke topicId
             const assignment = await tx.assignment.create({
                 data: {
                     title,
                     description,
                     type,
                     dueDate: new Date(dueDate),
-                    // PERUBAHAN: Menggunakan topicId
                     topicId: Number(topicId),
+                    externalUrl: type === 'link_google' ? externalUrl : null,
+                    startTime: startTime ? new Date(startTime) : null,
+                    endTime: endTime ? new Date(endTime) : null,
+                    timeLimit: timeLimit != null ? Number(timeLimit) : null,
+                    attemptLimit: attemptLimit != null ? Number(attemptLimit) : null,
+                    passingGrade: passingGrade != null ? Number(passingGrade) : null,
+
                 },
             });
 
-            // 2. Buat semua pertanyaan dan pilihan jawabannya (logika ini tetap sama)
-            for (const q of questions) {
-                const createdQuestion = await tx.question.create({
-                    data: {
-                        questionText: q.questionText,
-                        assignmentId: assignment.id,
-                    },
-                });
-
-                if (type === 'pilgan' && q.options && q.options.length > 0) {
-                    await tx.option.createMany({
-                        data: q.options.map(opt => ({
-                            ...opt,
-                            questionId: createdQuestion.id,
-                        })),
+            if ((type === 'pilgan' || type === 'esai') && questions) {
+                for (const q of questions) {
+                    const createdQuestion = await tx.question.create({
+                        data: {
+                            questionText: q.questionText,
+                            assignmentId: assignment.id,
+                        },
                     });
+
+                    if (type === 'pilgan' && q.options && q.options.length > 0) {
+                        await tx.option.createMany({
+                            data: q.options.map(opt => ({ ...opt, questionId: createdQuestion.id })),
+                        });
+                    }
                 }
             }
             return assignment;
@@ -67,8 +96,132 @@ export const createAssignmentForTopic = async (req: AuthRequest, res: Response, 
 
         res.status(201).json(newAssignment);
     } catch (error) {
-        console.error("Gagal membuat tugas:", error);
-        res.status(500).json({ message: "Gagal membuat tugas" });
+        console.error("GAGAL MEMBUAT TUGAS:", error); // Log error yang lebih jelas
+        res.status(500).json({ message: "Terjadi kesalahan internal saat menyimpan tugas. Silakan cek log server." });
+    }
+};
+
+export const getAssignmentSubmissions = async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+        const { id } = req.params; // ID dari tugas (assignment)
+        const teacherId = req.user?.userId;
+
+        const assignment = await prisma.assignment.findUnique({
+            where: { id: Number(id) },
+            select: {
+                title: true,
+                topic: { select: { class: { select: { teacherId: true } } } }, // Untuk verifikasi guru
+                submissions: {
+                    orderBy: { submissionDate: 'asc' },
+                    select: {
+                        id: true,
+                        submissionDate: true,
+                        score: true,
+                        essayAnswer: true, // Kirim jawaban esai untuk ditampilkan di modal penilaian
+                        student: {
+                            select: {
+                                id: true,
+                                fullName: true,
+                                nisn: true
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        if (!assignment) {
+            res.status(404).json({ message: "Tugas tidak ditemukan." });
+            return;
+        }
+
+        // Verifikasi: pastikan yang meminta adalah guru dari kelas tersebut
+        if (assignment.topic?.class?.teacherId !== teacherId) {
+            res.status(403).json({ message: "Akses ditolak. Anda bukan guru kelas ini." });
+            return;
+        }
+
+        res.status(200).json(assignment);
+    } catch (error) {
+        console.error("Gagal mengambil data pengumpulan tugas:", error);
+        res.status(500).json({ message: "Gagal mengambil data pengumpulan." });
+    }
+};
+
+
+export const getAssignmentDetails = async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+        const { id } = req.params;
+        const assignment = await prisma.assignment.findUnique({
+            where: { id: Number(id) },
+            // 'include' ini memastikan semua data yang dibutuhkan frontend ikut terkirim
+            include: {
+                questions: {
+                    orderBy: { id: 'asc' },
+                    include: {
+                        options: {
+                            select: { id: true, optionText: true },
+                        },
+                    },
+                },
+                // PASTIKAN BLOK INI ADA: Ini akan mengambil data topik terkait
+                topic: {
+                    include: {
+                        class: {
+                            select: {
+                                id: true,
+                                teacherId: true
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        if (!assignment) {
+            res.status(404).json({ message: 'Tugas atau kuis tidak ditemukan.' });
+            return;
+        }
+        
+        res.status(200).json(assignment);
+
+    } catch (error) {
+        console.error("Gagal mengambil detail tugas:", error);
+        res.status(500).json({ message: 'Gagal mengambil detail tugas.' });
+    }
+};
+
+export const gradeSubmission = async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+        const { submissionId } = req.params;
+        const { score } = req.body;
+        const teacherId = req.user?.userId;
+
+        if (score === undefined || isNaN(parseFloat(score)) || score < 0 || score > 100) {
+            res.status(400).json({ message: "Nilai harus berupa angka antara 0 dan 100." });
+            return;
+        }
+
+        // Verifikasi opsional: cek apakah guru ini berhak menilai submission ini
+        const submission = await prisma.submission.findUnique({
+            where: { id: Number(submissionId) },
+            select: { assignment: { select: { topic: { select: { class: { select: { teacherId: true } } } } } } }
+        });
+
+        if (!submission || submission.assignment?.topic?.class?.teacherId !== teacherId) {  
+             res.status(403).json({ message: "Akses ditolak." });
+            return;
+        }
+
+        const updatedSubmission = await prisma.submission.update({
+            where: { id: Number(submissionId) },
+            data: { score: parseFloat(score) }
+        });
+
+        res.status(200).json(updatedSubmission);
+    } catch (error) {
+        console.error("Gagal memberikan nilai:", error);
+        res.status(500).json({ message: "Gagal memberikan nilai." });
     }
 };
 
@@ -99,43 +252,128 @@ export const getAssignmentsForTopic = async (req: AuthRequest, res: Response, ne
     }
 };
 export const getAssignmentById = async (req: AuthRequest, res: Response): Promise<void> => {
-  const { id } = req.params;
-
-  try {
-    const assignment = await prisma.assignment.findUnique({
-      where: { id: Number(id) },
-      include: {
-        // Sertakan semua pertanyaan yang terkait dengan tugas ini
-        questions: {
-          orderBy: { id: 'asc' }, // Urutkan pertanyaan
-          // Sertakan semua pilihan jawaban untuk setiap pertanyaan
-          include: {
-            // Pilih hanya field yang dibutuhkan siswa, jangan kirim 'isCorrect'
-            options: {
-              select: {
-                id: true,
-                optionText: true,
-              },
+    const { id } = req.params;
+    try {
+        const assignment = await prisma.assignment.findUnique({
+            where: { id: Number(id) },
+            include: {
+                questions: {
+                    orderBy: { id: 'asc' },
+                    include: {
+                        options: {
+                            select: { id: true, optionText: true }, // Hanya pilih data aman
+                        },
+                    },
+                },
+                  topic: {
+                    include: {
+                        class: {
+                            select: {
+                                id: true,
+                                teacher: {
+                                    select: {
+                                        id: true
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
             },
-          },
-        },
-      },
-    });
+        });
 
-    if (!assignment) {
-      res.status(404).json({ message: 'Tugas atau kuis tidak ditemukan.' });
-      return;
+        if (!assignment) {
+            res.status(404).json({ message: 'Tugas atau kuis tidak ditemukan.' });
+            return;
+        }
+        
+        // Tidak perlu memproses 'safeAssignment' lagi karena query sudah aman
+        res.status(200).json(assignment);
+
+    } catch (error) {
+        console.error("Gagal mengambil detail tugas:", error);
+        res.status(500).json({ message: 'Gagal mengambil detail tugas.' });
     }
-    
-    // Jangan kirim jawaban yang benar ke siswa
-    const safeAssignment = {
-        ...assignment,
-        questions: assignment.questions.map(q => ({...q, options: q.options.map(o => ({...o, isCorrect: undefined}))}))
-    };
+};
 
-    res.status(200).json(safeAssignment);
-  } catch (error) {
-    console.error("Gagal mengambil detail tugas:", error);
-    res.status(500).json({ message: 'Gagal mengambil detail tugas.' });
-  }
+// --- PERBAIKAN 4: Sempurnakan logika updateAssignment ---
+export const updateAssignment = async (req: AuthRequest, res: Response): Promise<void> => {
+    const { id } = req.params;
+    const { title, description, dueDate, type, externalUrl, startTime, endTime, timeLimit, attemptLimit, passingGrade } = req.body;
+
+    if (!title || !dueDate || !type) {
+        res.status(400).json({ message: "Judul, tanggal tenggat, dan tipe tugas wajib diisi." });
+        return;
+    }
+
+    try {
+        const existingAssignment = await prisma.assignment.findUnique({ where: { id: Number(id) } });
+        if (!existingAssignment) {
+            res.status(404).json({ message: "Tugas tidak ditemukan." });
+            return;
+        }
+
+        const dataToUpdate: any = {
+            title,
+            description,
+            type,
+            dueDate: new Date(dueDate),
+            externalUrl: type === 'link_google' ? externalUrl : null,
+            startTime: startTime ? new Date(startTime) : null,
+            endTime: endTime ? new Date(endTime) : null,
+            timeLimit: timeLimit ? Number(timeLimit) : null,
+            attemptLimit: attemptLimit ? Number(attemptLimit) : null,
+            passingGrade: passingGrade ? Number(passingGrade) : null,
+        };
+
+        if (existingAssignment.type !== 'link_google' && type === 'link_google') {
+            await prisma.question.deleteMany({
+                where: { assignmentId: Number(id) },
+            });
+        }
+
+        const updatedAssignment = await prisma.assignment.update({
+            where: { id: Number(id) },
+            data: dataToUpdate,
+        });
+
+        res.status(200).json(updatedAssignment);
+    } catch (error) {
+        console.error("Gagal mengupdate tugas:", error);
+        res.status(500).json({ message: "Gagal mengupdate tugas." });
+    }
+};
+// --- FUNGSI BARU: Siswa/Guru mengambil semua tugas yang relevan ---
+export const getMyAssignments = async (req: AuthRequest, res: Response): Promise<void> => {
+    const userId = req.user?.userId;
+    const role = req.user?.role;
+
+    if (!userId) {
+        res.status(401).json({ message: "Otentikasi diperlukan." });
+        return;
+    }
+
+    try {
+        let assignments;
+        if (role === 'guru') {
+            // Guru: Ambil semua tugas dari kelas yang dia ajar
+            const classes = await prisma.class.findMany({
+                where: { teacherId: userId },
+                select: { topics: { select: { assignments: { include: { topic: { select: { class: { select: { name: true } } } } } } } } }
+            });
+            assignments = classes.flatMap(c => c.topics.flatMap(t => t.assignments));
+        } else { // Siswa
+            // Siswa: Ambil semua tugas dari kelas yang diikuti
+            const memberships = await prisma.class_Members.findMany({
+                where: { studentId: userId },
+                select: { class: { select: { topics: { select: { assignments: { include: { topic: { select: { class: { select: { name: true } } } } } } } } } } }
+            });
+            assignments = memberships.flatMap(m => m.class.topics.flatMap(t => t.assignments));
+        }
+
+        res.status(200).json(assignments);
+    } catch (error) {
+        console.error("Gagal mengambil tugas saya:", error);
+        res.status(500).json({ message: "Gagal mengambil daftar tugas." });
+    }
 };

@@ -4,7 +4,10 @@ import { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import apiClient from '@/lib/axios';
 import Link from 'next/link';
-import { FaChevronDown, FaChevronRight, FaFilePdf, FaClipboardList, FaPencilAlt, FaTrash, FaCalendarCheck } from 'react-icons/fa';
+// --- PERUBAHAN 1: Impor FaYoutube & YouTubeEmbed ---
+import { FaChevronDown, FaChevronRight, FaFilePdf, FaClipboardList, FaPencilAlt, FaTrash, FaCalendarCheck, FaYoutube } from 'react-icons/fa';
+import YouTubeEmbed from '@/components/ui/YouTubeEmbed';
+// --- BATAS PERUBAHAN ---
 import { useAuth } from '@/contexts/AuthContext';
 import AddTopicModal from '@/components/dashboard/AddTopicModal';
 import AddActivityModal from '@/components/dashboard/AddActivityModal';
@@ -12,9 +15,17 @@ import AddMaterialModal from '@/components/dashboard/AddMaterialModal';
 import EditTopicModal from '@/components/dashboard/EditTopicModal';
 import AddAssignmentModal from '@/components/dashboard/AddAssignmentModal';
 import AddAttendanceModal from '@/components/dashboard/AddAttendanceModal';
+import EditAssignmentModal from '@/components/dashboard/EditAssignmentModal';
 
-// --- Tipe Data (tidak ada perubahan) ---
-interface MaterialInfo { id: number; title: string; fileUrl: string; }
+
+// --- PERUBAHAN 2: Perbarui Tipe MaterialInfo ---
+interface MaterialInfo {
+  id: number;
+  title: string;
+  fileUrl?: string | null; // Dibuat opsional
+  youtubeUrl?: string | null; // Dibuat opsional
+}
+// --- BATAS PERUBAHAN ---
 interface AssignmentInfo { id: number; title: string; type: string; dueDate: string; }
 interface AttendanceInfo { id: number; title: string; }
 interface TopicInfo {
@@ -34,10 +45,11 @@ interface ClassDetails {
 }
 
 export default function ClassDetailPage() {
-  // --- State dan Fungsi (tidak ada perubahan) ---
   const params = useParams();
   const { id } = params;
   const { user } = useAuth();
+  const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
+
   
   const [classData, setClassData] = useState<ClassDetails | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -117,6 +129,7 @@ export default function ClassDetailPage() {
 
   return (
     <>
+    
       {/* --- Semua modal (tidak ada perubahan) --- */}
       <AddTopicModal isOpen={isTopicModalOpen} onClose={() => setIsTopicModalOpen(false)} classId={classData.id} nextOrder={classData.topics?.length + 1 || 1} onTopicCreated={fetchData} />
       <AddActivityModal 
@@ -132,8 +145,8 @@ export default function ClassDetailPage() {
       <AddAttendanceModal isOpen={isAttendanceModalOpen} onClose={() => setIsAttendanceModalOpen(false)} topicId={selectedTopicId} onAttendanceAdded={fetchData} />
 
       {/* --- Tampilan Halaman --- */}
-      <div className="space-y-6">
-        <div className="flex justify-between items-center">
+      <div className="space-y-6  ">
+        <div className="flex justify-between items-center pb-4 mb-4 border-b border-gray-200">
           <h1 className="text-3xl font-bold text-gray-800">{classData.name}</h1>
           {isTeacher && (
             <button onClick={() => setIsEditing(!isEditing)} className={`px-4 py-2 rounded-lg text-white font-semibold transition-colors ${isEditing ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'}`}>
@@ -142,7 +155,7 @@ export default function ClassDetailPage() {
           )}
         </div>
 
-        <div className="space-y-4">
+        <div className="space-y-4 ">
           {classData.topics?.map((topic) => (
             <div key={topic.id} className="bg-white p-4 rounded-lg shadow-md">
               <div className="flex justify-between items-center">
@@ -159,20 +172,35 @@ export default function ClassDetailPage() {
               </div>
               
               {openTopics[topic.id] && (
-                // Kontainer untuk semua aktivitas, `space-y-3` untuk memberi jarak antar box
                 <div className="pt-4 pl-6 pr-2 space-y-3 border-t mt-3">
                   
-                  {/* --- PERUBAHAN DIMULAI DI SINI --- */}
-                  
-                  {/* Setiap materi dibungkus box sendiri */}
+                  {/* --- PERUBAHAN 3: Logika untuk Menampilkan Berbagai Jenis Materi --- */}
                   {topic.materials?.map((material) => (
-                    <div key={material.id} className="flex justify-between items-center p-3 bg-slate-50 border rounded-md hover:bg-slate-100 transition-colors">
-                      <a href={material.fileUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 text-gray-700 font-semibold">
-                        <FaFilePdf className="text-red-500" />
+                    <div key={material.id} className="p-3 bg-slate-50 border rounded-md hover:bg-slate-100 transition-colors">
+                      <div className="flex items-center gap-3 text-gray-700 font-semibold">
+                        {/* Ikon berubah tergantung jenis materi */}
+                        {material.fileUrl && <FaFilePdf className="text-red-500" />}
+                        {material.youtubeUrl && <FaYoutube className="text-red-600" />}
                         <span>{material.title}</span>
-                      </a>
+                      </div>
+                      
+                      {/* Tampilkan link download jika ada fileUrl */}
+                      {material.fileUrl && (
+                        <a href={`${backendUrl}${material.fileUrl}`} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 hover:underline mt-1 block">
+                          Download Materi
+                        </a>
+                      )}
+
+                      {/* Tampilkan video HANYA jika link YouTube ada */}
+                      {material.youtubeUrl && (
+                        <div className="mt-4">
+                          <YouTubeEmbed url={material.youtubeUrl} />
+                        </div>
+                      )}
                     </div>
                   ))}
+                  {/* --- BATAS PERUBAHAN --- */}
+
 
                   {/* Setiap tugas dibungkus box sendiri */}
                   {topic.assignments?.map((assignment) => (
@@ -208,8 +236,6 @@ export default function ClassDetailPage() {
                       )}
                     </div>
                   )}
-
-                  {/* --- PERUBAHAN SELESAI DI SINI --- */}
 
                   {/* Tombol tambah aktivitas untuk guru */}
                   {isEditing && (

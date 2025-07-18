@@ -56,7 +56,7 @@ export default function SubmissionsPage() {
                 onGradeSuccess={fetchData} // Refresh data setelah berhasil menilai
             />
 
-            <div className="container mx-auto p-8">
+            <div className="container mx-auto p-8 text-gray-800">
                 <h1 className="text-3xl font-bold mb-6">Rekap Pengumpulan Tugas</h1>
                 <div className="bg-white p-6 rounded-lg shadow-md">
                     <table className="w-full text-left">

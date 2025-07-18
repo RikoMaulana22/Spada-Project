@@ -1,22 +1,60 @@
 // Path: server/src/routes/material.routes.ts
 
 import { Router } from 'express';
-import { uploadMaterial, getGlobalMaterials  } from '../controllers/material.controller';
+import {
+    createMaterialForTopic,
+    createGlobalMaterial,
+    getGlobalMaterials,
+    getMaterialsForTopic,
+    deleteMaterial
+} from '../controllers/material.controller';
+import { authenticate } from '../middlewares/auth.middleware';
 import { checkRole } from '../middlewares/role.middleware';
-import upload from '../config/multer.config';
+import { upload } from '../middlewares/upload.middleware'; // Pastikan middleware upload sudah ada
 
 const router = Router();
 
-// Definisikan rute untuk upload materi ke sebuah topik
-// Method: POST
-// URL: /api/materials/topic/:topicId/materials
-router.post(
-  '/topic/:topicId/materials',
-  checkRole('guru'),           // Middleware: Pastikan hanya guru yang bisa upload
-  upload.single('file'),      // Middleware: Multer akan menangani satu file dari field bernama 'file'
-  uploadMaterial              // Controller: Fungsi yang akan dieksekusi setelah middleware
-);
-router.get('/global', getGlobalMaterials);
+// --- Rute untuk Materi Global (umumnya oleh Admin) ---
 
+// Admin membuat materi global baru
+router.post('/global',
+    authenticate,
+    checkRole('admin'),
+    upload.single('file'),
+    createGlobalMaterial
+);
+
+// Semua user yang login bisa melihat materi global
+router.get('/global',
+    authenticate,
+    getGlobalMaterials
+);
+
+
+// --- Rute untuk Materi di dalam Topik (oleh Guru) ---
+
+// Guru membuat materi baru di dalam sebuah topik
+router.post('/topics/:topicId',
+    authenticate,
+    checkRole('guru'),
+    upload.single('file'),
+    createMaterialForTopic
+);
+
+// Semua user yang login bisa melihat materi di dalam sebuah topik
+router.get('/topics/:topicId',
+    authenticate,
+    getMaterialsForTopic
+);
+
+
+// --- Rute untuk Mengelola Materi Individual ---
+
+// Guru atau Admin bisa menghapus materi
+router.delete('/:materialId',
+    authenticate,
+    checkRole(['guru', 'admin']),
+    deleteMaterial
+);
 
 export default router;

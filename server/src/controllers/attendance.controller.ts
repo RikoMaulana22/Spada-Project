@@ -52,6 +52,44 @@ export const createAttendance = async (req: AuthRequest, res: Response): Promise
     res.status(500).json({ message: 'Gagal membuat sesi absensi.' });
   }
 };
+
+export const getAttendanceDetails = async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+        const { id } = req.params; // Ini adalah ID dari sesi absensi
+
+        const attendanceDetails = await prisma.attendance.findUnique({
+            where: { id: Number(id) },
+            // Ambil juga semua data relasi yang dibutuhkan oleh frontend
+            include: {
+                // Ambil semua data rekam jejak (siapa saja yang sudah absen)
+                records: {
+                    orderBy: { timestamp: 'asc' }, // Urutkan berdasarkan yang paling dulu absen
+                    // Untuk setiap rekam jejak, ambil juga data siswanya
+                    include: {
+                        student: {
+                            select: {
+                                id: true,
+                                fullName: true,
+                                nisn: true,
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        if (!attendanceDetails) {
+            res.status(404).json({ message: "Sesi absensi tidak ditemukan." });
+            return;
+        }
+
+        res.status(200).json(attendanceDetails);
+    } catch (error) {
+        console.error("Gagal mengambil detail absensi:", error);
+        res.status(500).json({ message: "Gagal mengambil detail absensi." });
+    }
+};
+
 export const markAttendanceRecord = async (req: AuthRequest, res: Response): Promise<void> => {
   const { id: attendanceId } = req.params; // ID dari sesi absensi
   const studentId = req.user?.userId;

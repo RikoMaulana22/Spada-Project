@@ -44,10 +44,11 @@ export default function AddTopicModal({ isOpen, onClose, classId, nextOrder, onT
   };
 
   return (
+    <div className=" text-gray-600">
     <Modal isOpen={isOpen} onClose={onClose} title="Buat Topik Baru">
       <form onSubmit={handleSubmit}>
         {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
-        <div className="mb-4">
+        <div className="mb-4 text-gray-700">
           <label htmlFor="topic-title" className="block text-sm font-medium text-gray-700">
             Judul Topik
           </label>
@@ -71,5 +72,6 @@ export default function AddTopicModal({ isOpen, onClose, classId, nextOrder, onT
         </div>
       </form>
     </Modal>
+  </div>
   );
 }

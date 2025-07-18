@@ -1,8 +1,12 @@
+
+export type AssignmentType = 'pilgan' | 'esai' | 'upload_gambar' | 'link_google';
+
 export interface User {
   id: number;
   fullName: string;
   username: string; // <-- Ini properti yang hilang
   role: 'guru' | 'siswa'| 'admin';
+  email: string;
   createdAt?: string;
   nisn?: string | null; // Dibuat opsional karena tidak semua user punya
 
@@ -24,7 +28,6 @@ export interface Subject {
   id: number;
   name: string;
   grade: number;
-  // --- FIX DI SINI: Nama properti diubah dari 'classes' menjadi 'Class' ---
   Class: ClassInfo[]; 
 }
 
@@ -47,7 +50,9 @@ export interface ClassSummary {
 export interface MaterialInfo {
   id: number;
   title: string;
-  fileUrl: string;
+  fileUrl?: string | null;      // <-- Ubah di sini (tambahkan ?)
+  youtubeUrl?: string | null;   // <-- Ubah di sini (tambahkan ?)
+  content?: string | null;      // <-- Ubah di sini (tambahkan ?)
 }
 
 export interface AssignmentInfo {
@@ -55,6 +60,32 @@ export interface AssignmentInfo {
   title: string;
   type: string;
   dueDate: string;
+}
+
+export interface AssignmentDetails {
+  id: number;
+  title: string;
+  description: string;
+  type: AssignmentType;
+  dueDate: string;
+  externalUrl?: string | null;
+  // You can add other fields like 'questions' if needed by other components
+}
+
+export interface GlobalMaterial {
+  id: number;
+  title: string;
+  fileUrl: string;
+}
+
+export interface ScheduleItem {
+  id: number;
+  dayOfWeek: string;
+  startTime: string;
+  endTime: string;
+  class: { name: string };
+  subject: { name: string };
+  teacher?: { fullName: string }; // Opsional, karena siswa mungkin tidak perlu tahu
 }
 
 // INI YANG PALING PENTING: Definisikan dan ekspor TopicInfo

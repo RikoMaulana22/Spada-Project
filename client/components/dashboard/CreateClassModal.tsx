@@ -71,8 +71,8 @@ export default function CreateClassModal({ isOpen, onClose, onClassCreated }: Cr
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
-      <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-md">
+    <div className="fixed inset-0 bg-gray-200 bg-opacity-50 flex justify-center items-center z-50">
+      <div className=" bg-white p-6 rounded-lg shadow-xl w-full max-w-md text-gray-800">
         <h2 className="text-xl text-gray-900 font-bold mb-4">Buat Kelas Baru</h2>
         <form onSubmit={handleSubmit}>
           {error && <p className="text-red-500 text-sm mb-4">{error}</p>}

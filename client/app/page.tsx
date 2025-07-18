@@ -8,6 +8,7 @@ export default function HomePage() {
   const [searchText, setSearchText] = useState('');
   const [expandedClass, setExpandedClass] = useState<number | null>(null); // 7, 8, 9
 
+  const [active, setActive] = useState(false);
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     console.log('Cari:', searchText);
@@ -52,6 +53,7 @@ export default function HomePage() {
         {/* Course Categories */}
         <div>
           <h2 className="text-xl font-semibold text-gray-800 mb-4">Kategori Kelas</h2>
+          {active && ( 
           <ul className="space-y-2 list-none ml-4">
             {[7, 8, 9].map((grade) => (
               <li key={grade}>
@@ -59,9 +61,13 @@ export default function HomePage() {
                   onClick={() => toggleClass(grade)}
                   className="flex items-center text-blue-600 font-medium focus:outline-none"
                 >
+                  {/* start */}
                   {expandedClass === grade ? <FaChevronDown className="mr-2" /> : <FaChevronRight className="mr-2" />}
                   Kelas {['VII', 'VIII', 'IX'][grade - 7]}
+                  {/* finish */}
                 </button>
+
+{/* start */}
                 {expandedClass === grade && (
                   <ul className="ml-6 mt-1 space-y-1">
                     {subjectsByClass[grade as 7 | 8 | 9].map((subject, index) => (
@@ -69,9 +75,11 @@ export default function HomePage() {
                     ))}
                   </ul>
                 )}
+                {/* finish */}
               </li>
             ))}
           </ul>
+          )}
         </div>
       </div>
     </div>

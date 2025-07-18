@@ -61,6 +61,8 @@ export const getTeacherClasses = async (req: AuthRequest, res: Response): Promis
 
 // --- PERBAIKAN PADA FUNGSI INI ---
 // GANTIKAN FUNGSI LAMA DENGAN VERSI BARU INI
+// Path: server/src/controllers/class.controller.ts
+
 export const getClassById = async (req: AuthRequest, res: Response): Promise<void> => {
     try {
         const { id } = req.params;
@@ -68,7 +70,7 @@ export const getClassById = async (req: AuthRequest, res: Response): Promise<voi
 
         const classData = await prisma.class.findUnique({
             where: { id: Number(id) },
-            // Pastikan keseluruhan blok 'include' ini benar untuk menghindari error tipe
+            // Query ini memastikan SEMUA data yang dibutuhkan frontend diambil
             include: {
                 subject: true,
                 teacher: { 
@@ -81,38 +83,39 @@ export const getClassById = async (req: AuthRequest, res: Response): Promise<voi
                     where: { studentId: userId },
                     select: { studentId: true }
                 },
+                // Ini adalah bagian paling penting
                 topics: {
                     orderBy: {
                         order: 'asc'
                     },
                     include: {
-                        materials: { 
+                        materials: { // <-- Mengambil semua materi
                             orderBy: { createdAt: 'asc' }
                         },
-                        assignments: { 
+                        assignments: { // <-- Mengambil semua tugas
                             orderBy: { createdAt: 'asc' }
                         },
-                        attendance: true // Mengambil data absensi terkait topik
+                        attendance: true // <-- Mengambil data absensi
                     }
                 },
             },
         });
 
         if (!classData) {
-            res.status(404).json({ message: 'Kelas tidak ditemukan' });
+            res.status(404).json({ message: 'Kelas tidak ditemukan.' });
             return;
         }
 
-        // Karena 'include' sudah benar, 'classData.members' sekarang akan dikenali
-        const isEnrolled = classData.members.length > 0 || classData.teacherId === userId;
+        const isEnrolled = classData.members.length > 0 || classData.teacher.id === userId;
         const { members, ...responseData } = classData;
 
         res.status(200).json({ ...responseData, isEnrolled });
     } catch (error) {
         console.error("Gagal mengambil detail kelas:", error);
-        res.status(500).json({ message: 'Gagal mengambil detail kelas' });
+        res.status(500).json({ message: 'Gagal mengambil detail kelas.' });
     }
 };
+
 // --- TIDAK ADA PERUBAHAN PADA FUNGSI INI ---
 export const enrolInClass = async (req: AuthRequest, res: Response): Promise<void> => {
     const { id: classId } = req.params;
@@ -178,6 +181,21 @@ export const createTopicForClass = async (req: AuthRequest, res: Response): Prom
         // Galat ini kemungkinan besar terjadi karena 'prisma.topic' tidak ada.
         console.error("Gagal membuat topik:", error);
         res.status(500).json({ message: 'Gagal membuat topik. Pastikan model Topic ada di skema database.' });
+    }
+};
+
+export const getAllClasses = async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+        const classes = await prisma.class.findMany({
+            select: {
+                id: true,
+                name: true
+            },
+            orderBy: { name: 'asc' }
+        });
+        res.status(200).json(classes);
+    } catch (error) {
+        res.status(500).json({ message: "Gagal mengambil daftar kelas." });
     }
 };
 

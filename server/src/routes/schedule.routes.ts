@@ -1,15 +1,22 @@
-// Path: src/routes/schedule.routes.ts
 import { Router } from 'express';
-import { createSchedule, getSchedulesByClass, deleteSchedule } from '../controllers/schedule.controller';
+import { 
+    createSchedule, 
+    getAllSchedules, 
+    getMySchedule, 
+    deleteSchedule, 
+    updateSchedule 
+} from '../controllers/schedule.controller';
 import { checkRole } from '../middlewares/role.middleware';
 
 const router = Router();
 
-// Rute untuk admin
+// Rute untuk Admin
+router.get('/', checkRole('admin'), getAllSchedules);
 router.post('/', checkRole('admin'), createSchedule);
+router.put('/:id', checkRole('admin'), updateSchedule);
 router.delete('/:id', checkRole('admin'), deleteSchedule);
 
-// Rute untuk semua pengguna terautentikasi (admin, guru, siswa)
-router.get('/class/:classId', getSchedulesByClass);
+// Rute untuk Siswa & Guru
+router.get('/my', getMySchedule);
 
 export default router;

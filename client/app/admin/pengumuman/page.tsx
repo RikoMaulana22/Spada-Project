@@ -73,15 +73,15 @@ export default function ManageAnnouncementsPage() {
                     <h2 className="text-xl font-bold mb-4">Buat Pengumuman Baru</h2>
                     <form onSubmit={handleSubmit} className="space-y-4">
                         <div>
-                            <label className="block text-sm font-medium">Judul</label>
+                            <label className="block text-sm font-medium border-gray-500">Judul</label>
                             <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} required className="form-input w-full mt-1" />
                         </div>
                         <div>
-                            <label className="block text-sm font-medium">Isi Pengumuman</label>
+                            <label className="block text-sm font-medium border-gray-500">Isi Pengumuman</label>
                             <textarea value={content} onChange={(e) => setContent(e.target.value)} required rows={8} className="form-textarea w-full mt-1"></textarea>
                         </div>
                         <div className="text-right">
-                            <button type="submit" disabled={isSubmitting} className="w-full px-6 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 disabled:bg-blue-300">
+                            <button type="submit" disabled={isSubmitting} className="w-full px-6 py-2 bg-blue-600 border-gray-500 text-white font-semibold rounded-lg hover:bg-blue-700 disabled:bg-blue-300">
                                 {isSubmitting ? 'Mengirim...' : 'Kirim Pengumuman'}
                             </button>
                         </div>
