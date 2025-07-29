@@ -4,7 +4,7 @@ import jwt from 'jsonwebtoken';
 // Interface untuk payload JWT
 export interface TokenPayload {
   userId: number;
-  role: 'guru' | 'siswa'| 'admin';
+  role: 'guru' | 'siswa'| 'admin' | 'wali_kelas'; // Tambahkan 'wali_kelas' sebagai role baru
 }
 
 // Extend Request untuk menyimpan data user

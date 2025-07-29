@@ -1,5 +1,5 @@
 // Path: server/src/controllers/schedule.controller.ts
-import { Response } from 'express';
+import { Request,Response } from 'express';
 import { PrismaClient, DayOfWeek } from '@prisma/client';
 import { AuthRequest } from '../middlewares/auth.middleware';
 
@@ -45,6 +45,38 @@ export const getSchedulesByClass = async (req: AuthRequest, res: Response): Prom
         res.status(200).json(schedules);
     } catch (error) {
         res.status(500).json({ message: 'Gagal mengambil jadwal.' });
+    }
+};
+
+export const getPublicSchedules = async (req: Request, res: Response) => {
+    try {
+        const schedules = await prisma.schedule.findMany({
+            // Ambil juga data relasinya
+            include: {
+                class: { select: { name: true } },
+                subject: { select: { name: true } },
+                teacher: { select: { fullName: true } }
+            },
+            // Urutkan berdasarkan hari lalu jam mulai
+            orderBy: [
+                { dayOfWeek: 'asc' },
+                { startTime: 'asc' }
+            ]
+        });
+
+        // Kelompokkan jadwal berdasarkan hari
+        const groupedSchedules = schedules.reduce((acc, schedule) => {
+            const day = schedule.dayOfWeek;
+            if (!acc[day]) {
+                acc[day] = [];
+            }
+            acc[day].push(schedule);
+            return acc;
+        }, {} as Record<string, typeof schedules>);
+
+        res.json(groupedSchedules);
+    } catch (error) {
+        res.status(500).json({ message: "Gagal mengambil data jadwal." });
     }
 };
 

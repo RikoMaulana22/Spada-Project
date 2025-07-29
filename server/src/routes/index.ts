@@ -15,6 +15,8 @@ import submissionRoutes from './submission.routes';
 import scheduleRoutes from './schedule.routes';
 import announcementRoutes from './announcement.routes';
 import settingRoutes from './setting.routes';
+import homeroomRoutes from './homeroom.routes';
+
 
 
 
@@ -44,6 +46,9 @@ mainRouter.use('/announcements', authenticate, announcementRoutes);
 mainRouter.use('/settings', settingRoutes);
 // Rute publik
 mainRouter.use('/auth', authRoutes);
+// Rute Wali Kelas
+mainRouter.use('/homeroom', homeroomRoutes);
+
 
 
 

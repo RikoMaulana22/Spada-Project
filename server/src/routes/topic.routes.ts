@@ -2,15 +2,12 @@
 import { Router } from 'express';
 import { updateTopic, deleteTopic } from '../controllers/topic.controller';
 import { checkRole } from '../middlewares/role.middleware';
+import { authenticate } from '../middlewares/auth.middleware'; // <-- 1. Impor authenticate
+
 
 const router = Router();
 
-// Endpoint untuk mengedit topik
-// PUT /api/topics/:id
-router.put('/:id', checkRole('guru'), updateTopic);
-
-// Endpoint untuk menghapus topik
-// DELETE /api/topics/:id
-router.delete('/:id', checkRole('guru'), deleteTopic);
-
+// 2. Tambahkan 'authenticate' sebelum 'checkRole'
+router.put('/:id', authenticate, checkRole('guru'), updateTopic);
+router.delete('/:id', authenticate, checkRole('guru'), deleteTopic);
 export default router;

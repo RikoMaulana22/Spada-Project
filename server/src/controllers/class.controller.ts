@@ -1,5 +1,5 @@
 // Path: server/src/controllers/class.controller.ts
-import { Response, NextFunction } from 'express';
+import { Request, Response, NextFunction } from 'express';
 import { PrismaClient, Prisma } from '@prisma/client';
 import { AuthRequest } from '../middlewares/auth.middleware';
 
@@ -250,4 +250,19 @@ export const getStudentClasses = async (req: AuthRequest, res: Response): Promis
         console.error("Gagal mengambil data kelas siswa:", error);
         res.status(500).json({ message: 'Terjadi kesalahan pada server saat mengambil data kelas.' });
     }
+};
+
+export const deleteClass = async (req: Request, res: Response) => {
+  const { id } = req.params;
+
+  try {
+    await prisma.class.delete({
+      where: { id: Number(id) },
+    });
+
+    res.status(200).json({ message: 'Kelas berhasil dihapus' });
+  } catch (error) {
+    console.error('Gagal menghapus kelas:', error);
+    res.status(500).json({ message: 'Gagal menghapus kelas', error });
+  }
 };

@@ -9,23 +9,12 @@ import { authenticate } from '../middlewares/auth.middleware';
 
 const router = Router();
 
-// Rute ini mungkin lebih baik jika digabungkan dalam topic.routes.ts,
-// tapi jika dipisah, strukturnya seperti ini.
-// URL akan menjadi /api/assignments/topic/:topicId
-router.get('/my', getMyAssignments);
-
-// GET /api/assignments/topic/:topicId -> Mendapatkan semua tugas untuk topik tertentu
-router.get('/topic/:topicId', getAssignmentsForTopic);
-
-// POST /api/assignments/topic/:topicId -> Guru membuat tugas baru di topik tertentu
-router.post('/topic/:topicId', checkRole('guru'), createAssignmentForTopic);
-router.put('/:id', checkRole('guru'), updateAssignment);
+router.get('/my', authenticate, getMyAssignments);
+router.get('/topic/:topicId', authenticate, getAssignmentsForTopic);
+router.post('/topic/:topicId', authenticate, checkRole('guru'), createAssignmentForTopic);
+router.put('/:id', authenticate, checkRole('guru'), updateAssignment);
 router.get('/:id/submissions', authenticate, checkRole('guru'), getAssignmentSubmissions);
 router.put('/submissions/:submissionId/grade', authenticate, checkRole('guru'), gradeSubmission);
-
-
-
-router.get('/:id', getAssignmentById);
-
+router.get('/:id', authenticate, getAssignmentById);
 
 export default router;

@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useAuth } from '@/contexts/AuthContext';
-import { useRouter } from 'next/navigation';
+import { useRouter,usePathname  } from 'next/navigation';
 import { FaUserCircle, FaCaretDown } from 'react-icons/fa';
 
 export default function Header() {
@@ -13,6 +13,8 @@ export default function Header() {
   const router = useRouter();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+   const pathname = usePathname(); // <-- 2. Dapatkan path URL saat ini
+
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -45,6 +47,9 @@ export default function Header() {
     router.push('/login');
   };
 
+  const showNavLinks = pathname !== '/dashboard/wali-kelas';
+
+
   return (
     <header className="bg-white shadow-md z-10 relative">
       <nav className="container mx-auto px-6 py-3 flex justify-between items-center">
@@ -58,11 +63,14 @@ export default function Header() {
               priority
             />
           </Link>
+          {showNavLinks && (
           <div className="hidden md:flex items-center gap-6 ml-10">
             <Link href="/" className="text-gray-600 hover:text-gray-800">Home</Link>
             {user && <Link href="/dashboard" className="text-gray-600 hover:text-gray-800">Dashboard</Link>}
           </div>
+          )}
         </div>
+          
 
         <div className="flex items-center">
           {user ? (

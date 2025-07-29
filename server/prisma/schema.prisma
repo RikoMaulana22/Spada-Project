@@ -9,10 +9,19 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// --- ENUMS ---
 enum Role {
   guru
   siswa
   admin
+  wali_kelas
+}
+
+enum DailyAttendanceStatus {
+  HADIR
+  SAKIT
+  IZIN
+  ALPA
 }
 
 enum AssignmentType {
@@ -22,164 +31,19 @@ enum AssignmentType {
   link_google
 }
 
-model Setting {
-  id        Int      @id @default(autoincrement())
-  key       String   @unique // Contoh: "schoolName", "academicYear", "appLogo"
-  value     String   @db.Text
-  updatedAt DateTime @updatedAt
+enum NoteType {
+  PELANGGARAN
+  PRESTASI
+  BIMBINGAN_KONSELING
+  CATATAN_ORANG_TUA
 }
 
-model User {
-  id                Int                @id @default(autoincrement())
-  username          String             @unique
-  password          String
-  fullName          String
-  email             String   @unique
-  role              Role
-  nisn              String?
-  createdAt         DateTime           @default(now())
-  classesTaught     Class[]            @relation("TeacherClasses")
-  memberships       Class_Members[]
-  submissions       Submission[]
-  attendanceRecords AttendanceRecord[]
-  announcements     Announcement[]
-  schedules         Schedule[]
+enum LetterType {
+  IZIN_SAKIT
+  IZIN_ACARA
+  PANGGILAN_ORANG_TUA
 }
 
-model Announcement {
-  id        Int      @id @default(autoincrement())
-  title     String
-  content   String   @db.Text
-  authorId  Int
-  author    User     @relation(fields: [authorId], references: [id], onDelete: SetNull)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-model Subject {
-  id    Int     @id @default(autoincrement())
-  name  String
-  grade Int
-  Class Class[]
-  schedules         Schedule[]
-}
-
-model Class {
-  id          Int             @id @default(autoincrement())
-  name        String
-  description String?
-  createdAt   DateTime        @default(now())
-  teacher     User            @relation("TeacherClasses", fields: [teacherId], references: [id], onDelete: SetNull)
-  teacherId   Int
-  subject     Subject         @relation(fields: [subjectId], references: [id])
-  subjectId   Int
-  members     Class_Members[]
-  topics      Topic[]
-  schedules         Schedule[]
-}
-
-model Class_Members {
-  user      User @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  studentId Int
-  class     Class @relation(fields: [classId], references: [id], onDelete: Cascade)
-  classId   Int
-
-  @@id([studentId, classId])
-}
-
-model Attendance {
-  id         Int                @id @default(autoincrement())
-  title      String
-  openTime   DateTime
-  closeTime  DateTime
-  topicId    Int                @unique
-  topic      Topic              @relation(fields: [topicId], references: [id], onDelete: Cascade) // DIPERBAIKI
-  records    AttendanceRecord[]
-}
-
-model AttendanceRecord {
-  id           Int        @id @default(autoincrement())
-  timestamp    DateTime   @default(now())
-  studentId    Int
-  student      User       @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  attendanceId Int
-  attendance   Attendance @relation(fields: [attendanceId], references: [id], onDelete: Cascade)
-
-  @@unique([studentId, attendanceId])
-}
-
-model Topic {
-  id          Int          @id @default(autoincrement())
-  title       String
-  order       Int
-  createdAt   DateTime     @default(now())
-  classId     Int
-  class       Class        @relation(fields: [classId], references: [id], onDelete: Cascade)
-  attendance  Attendance?
-  materials   Material[]
-  assignments Assignment[]
-}
-
-model Material {
-  id        Int      @id @default(autoincrement())
-  title     String
-  fileUrl   String?
-  content     String?
-  youtubeUrl  String? 
-  createdAt DateTime @default(now())
-  topic     Topic?   @relation(fields: [topicId], references: [id], onDelete: Cascade)
-  topicId   Int?     // DIPERBAIKI
-}
-
-model Assignment {
-  id           Int            @id @default(autoincrement())
-  title        String
-  description  String?        @db.Text
-  type         AssignmentType
-  dueDate      DateTime
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
-  topic        Topic?         @relation(fields: [topicId], references: [id], onDelete: Cascade)
-  topicId      Int?           // DIPERBAIKI
-  externalUrl  String?        @db.Text // <-- TAMBAHKAN KOLOM BARU INI
-  startTime    DateTime?
-  endTime      DateTime?
-  timeLimit    Int?
-  attemptLimit Int?           @default(1)
-  passingGrade Int?           @default(70)
-  questions    Question[]
-  submissions  Submission[]
-}
-
-model Question {
-  id           Int        @id @default(autoincrement())
-  questionText String     @db.Text
-  assignment   Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
-  assignmentId Int
-  options      Option[]
-}
-
-model Option {
-  id         Int     @id @default(autoincrement())
-  optionText String
-  isCorrect  Boolean @default(false)
-  question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
-  questionId Int
-}
-
-model Submission {
-  id              Int        @id @default(autoincrement())
-  submissionDate  DateTime   @default(now())
-  score           Float?
-  essayAnswer     String?    @db.Text
-  fileUrl         String?
-  student         User       @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  studentId       Int
-  assignment      Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
-  assignmentId    Int
-  selectedOptions Json?
-}
-// --- ENUM BARU UNTUK HARI ---
 enum DayOfWeek {
   SENIN
   SELASA
@@ -191,19 +55,305 @@ enum DayOfWeek {
 }
 
 
-// --- MODEL BARU UNTUK JADWAL ---
-model Schedule {
-  id          Int       @id @default(autoincrement())
-  dayOfWeek   DayOfWeek // Menggunakan enum untuk hari
-  startTime   String    // Format "HH:mm", contoh: "08:00"
-  endTime     String    // Format "HH:mm", contoh: "09:30"
+// --- MODELS ---
+
+model Setting {
+  id        Int      @id @default(autoincrement())
+  key       String   @unique
+  value     String   @db.Text
+  updatedAt DateTime @updatedAt
+}
+
+model User {
+  id                       Int                 @id @default(autoincrement())
+  username                 String              @unique
+  password                 String
+  fullName                 String
+  email                    String              @unique
+  role                     Role
+  nisn                     String?             @unique
+  createdAt                DateTime            @default(now())
   
+  classesTaught            Class[]             @relation("TeacherClasses")
+  memberships              Class_Members[]
+  submissions              Submission[]
+  attendanceRecords        AttendanceRecord[]
+  announcements            Announcement[]
+  schedulesAsTeacher       Schedule[]          @relation("TeacherSchedules")
+  homeroomClasses          Class[]             @relation("HomeroomTeacher")
+  
+  dailyAttendancesAsStudent  DailyAttendance[]   @relation("StudentDailyAttendance")
+  dailyAttendancesRecorded DailyAttendance[]   @relation("RecorderDailyAttendance")
+  
+  notesGiven               StudentNote[]       @relation("AuthoredNotes")
+  notesAboutMe             StudentNote[]       @relation("StudentNotes")
+  
+  lettersAboutMe           Letter[]            @relation("StudentLetters")
+  grades StudentGrade[]
+}
+
+model Announcement {
+  id        Int      @id @default(autoincrement())
+  title     String
+  content   String   @db.Text
+  author    User     @relation(fields: [authorId], references: [id])
+  authorId  Int
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Subject {
+  id        Int        @id @default(autoincrement())
+  name      String
+  grade     Int
+  Class     Class[]
+  schedules Schedule[]
+  gradeComponents GradeComponent[]
+
+}
+
+model Class {
+  id                Int             @id @default(autoincrement())
+  name              String
+  description       String?
+  createdAt         DateTime        @default(now())
+  
+  teacher           User            @relation("TeacherClasses", fields: [teacherId], references: [id])
+  teacherId         Int
+  
+  subject           Subject         @relation(fields: [subjectId], references: [id])
+  subjectId         Int
+  
+  homeroomTeacher   User?           @relation("HomeroomTeacher", fields: [homeroomTeacherId], references: [id])
+  homeroomTeacherId Int?
+
+  members           Class_Members[]
+  topics            Topic[]
+  schedules         Schedule[]
+  studentNotes      StudentNote[]
+  letters           Letter[]
+  dailyAttendances  DailyAttendance[]
+  gradeComponents GradeComponent[]
+
+}
+
+model StudentNote {
+  id        Int      @id @default(autoincrement())
+  type      NoteType
+  content   String   @db.Text
+  date      DateTime @default(now())
+  
+  student   User     @relation("StudentNotes", fields: [studentId], references: [id])
+  studentId Int
+  
+  class     Class    @relation(fields: [classId], references: [id])
+  classId   Int
+  
+  author    User     @relation("AuthoredNotes", fields: [authorId], references: [id])
+  authorId  Int
+}
+
+model Letter {
+  id        Int        @id @default(autoincrement())
+  type      LetterType
+  date      DateTime   @default(now())
+  content   String     @db.Text
+  status    String
+  
+  student   User?       @relation("StudentLetters", fields: [studentId], references: [id])
+  studentId Int?
+  
+  class     Class      @relation(fields: [classId], references: [id])
+  classId   Int
+}
+
+model Class_Members {
+  user      User  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  studentId Int
+  class     Class @relation(fields: [classId], references: [id], onDelete: Cascade)
+  classId   Int
+
+  @@id([studentId, classId])
+}
+
+// --- FIX: Model Attendance yang berhubungan dengan e-learning (Topik) ---
+model Attendance {
+  id        Int                @id @default(autoincrement())
+  title     String
+  openTime  DateTime
+  closeTime DateTime
+  
+  topic     Topic              @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  topicId   Int                @unique
+  records   AttendanceRecord[]
+ 
+}
+
+// --- FIX: Model BARU untuk Absensi Harian oleh Wali Kelas ---
+model DailyAttendance {
+  id           Int                 @id @default(autoincrement())
+  date         DateTime            @db.Date
+  status       DailyAttendanceStatus
+  notes        String?
+
+  student      User                @relation("StudentDailyAttendance", fields: [studentId], references: [id], onDelete: Cascade)
+  studentId    Int
+  
+  class        Class               @relation(fields: [classId], references: [id], onDelete: Cascade)
+  classId      Int
+
+  recordedBy   User                @relation("RecorderDailyAttendance", fields: [recordedById], references: [id], onDelete: Cascade)
+  recordedById Int
+
+  @@unique([date, studentId])
+}
+
+model AttendanceRecord {
+  id           Int        @id @default(autoincrement())
+  timestamp    DateTime   @default(now())
+  notes        String?
+  status       DailyAttendanceStatus // Menggunakan ENUM yang sudah ada
+  proofUrl     String?
+
+  
+  student      User       @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  studentId    Int
+  
+  attendance   Attendance @relation(fields: [attendanceId], references: [id], onDelete: Cascade)
+  attendanceId Int
+
+  @@unique([studentId, attendanceId])
+}
+
+model Topic {
+  id          Int          @id @default(autoincrement())
+  title       String
+  order       Int
+  createdAt   DateTime     @default(now())
+  
+  class       Class        @relation(fields: [classId], references: [id], onDelete: Cascade)
   classId     Int
-  class       Class     @relation(fields: [classId], references: [id], onDelete: Cascade)
   
-  subjectId   Int
-  subject     Subject   @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  attendance  Attendance?
+  materials   Material[]
+  assignments Assignment[]
+}
+
+model Material {
+  id         Int      @id @default(autoincrement())
+  title      String
+  fileUrl    String?
+  content    String?
+  youtubeUrl String?
+  createdAt  DateTime @default(now())
   
-  teacherId   Int
-  teacher     User      @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  topic      Topic?   @relation(fields: [topicId], references: [id], onDelete: SetNull)
+  topicId    Int?
+}
+
+model Assignment {
+  id           Int            @id @default(autoincrement())
+  title        String
+  description  String?        @db.Text
+  type         AssignmentType
+  dueDate      DateTime
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  
+  topic        Topic?         @relation(fields: [topicId], references: [id], onDelete: SetNull)
+  topicId      Int?
+  
+  externalUrl  String?        @db.Text
+  startTime    DateTime?
+  endTime      DateTime?
+  timeLimit    Int?
+  attemptLimit Int?           @default(1)
+  passingGrade Int?           @default(70)
+  
+  questions    Question[]
+  submissions  Submission[]
+}
+
+model Question {
+  id           Int        @id @default(autoincrement())
+  questionText String     @db.Text
+  
+  assignment   Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  assignmentId Int
+  
+  options      Option[]
+}
+
+model Option {
+  id         Int     @id @default(autoincrement())
+  optionText String
+  isCorrect  Boolean @default(false)
+  
+  question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  questionId Int
+}
+
+model Submission {
+  id              Int        @id @default(autoincrement())
+  submissionDate  DateTime   @default(now())
+  score           Float?
+  essayAnswer     String?    @db.Text
+  fileUrl         String?
+  
+  student         User       @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  studentId       Int
+  
+  assignment      Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  assignmentId    Int
+  
+  selectedOptions Json?
+}
+
+model Schedule {
+  id        Int       @id @default(autoincrement())
+  dayOfWeek DayOfWeek
+  startTime String
+  endTime   String
+  
+  class     Class     @relation(fields: [classId], references: [id], onDelete: Cascade)
+  classId   Int
+  
+  subject   Subject   @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  subjectId Int
+  
+  teacher   User      @relation("TeacherSchedules", fields: [teacherId], references: [id], onDelete: Cascade)
+  teacherId Int
+}
+
+// --- MODEL BARU UNTUK KOMPONEN PENILAIAN ---
+model GradeComponent {
+  id        Int      @id @default(autoincrement())
+  name      String   // Contoh: "Ulangan Harian 1", "UTS Ganjil", "Tugas Praktik"
+  maxScore  Int      @default(100)
+  date      DateTime @default(now())
+
+  class     Class    @relation(fields: [classId], references: [id], onDelete: Cascade)
+  classId   Int
+
+  subject   Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  subjectId Int
+
+  // Satu komponen nilai akan memiliki banyak entri nilai dari siswa
+  grades    StudentGrade[]
+}
+
+// --- MODEL BARU UNTUK NILAI SISWA ---
+model StudentGrade {
+  id        Int   @id @default(autoincrement())
+  score     Float // Nilai yang didapat siswa
+
+  student   User  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  studentId Int
+
+  component GradeComponent @relation(fields: [gradeComponentId], references: [id], onDelete: Cascade)
+  gradeComponentId Int
+
+  // Siswa hanya bisa punya 1 nilai untuk 1 komponen
+  @@unique([studentId, gradeComponentId])
 }

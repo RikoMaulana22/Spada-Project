@@ -1,7 +1,7 @@
 'use client';
 
 // --- MODIFIKASI: Impor lebih banyak ikon ---
-import { FaFilePdf, FaFilePowerpoint, FaFileWord, FaFileAlt } from 'react-icons/fa';
+import { FaFilePdf, FaFilePowerpoint, FaFileWord, FaFileAlt, FaFileImage, FaFileExcel } from 'react-icons/fa';
 import { ReactNode } from 'react';
 
 // Definisikan tipe data untuk materi global
@@ -26,21 +26,33 @@ const MaterialSkeleton = () => (
 
 export default function GlobalMaterialsSection({ materials, isLoading }: GlobalMaterialsSectionProps) {
   // --- MODIFIKASI 1: Fungsi untuk mendapatkan ikon berdasarkan tipe file ---
-  const getFileIcon = (fileUrl: string): { icon: ReactNode, color: string } => {
-    const extension = fileUrl.split('.').pop()?.toLowerCase();
-    switch (extension) {
-      case 'pdf':
-        return { icon: <FaFilePdf />, color: 'text-red-500' };
-      case 'pptx':
-      case 'ppt':
-        return { icon: <FaFilePowerpoint />, color: 'text-orange-500' };
-      case 'docx':
-      case 'doc':
-        return { icon: <FaFileWord />, color: 'text-blue-500' };
-      default:
-        return { icon: <FaFileAlt />, color: 'text-gray-500' };
-    }
-  };
+  const getFileIcon = (fileUrl: string | null): { icon: ReactNode, color: string } => {
+  if (!fileUrl) {
+    return { icon: <FaFileAlt />, color: 'text-gray-400' }; // ikon default jika tidak ada file
+  }
+
+  const extension = fileUrl.split('.').pop()?.toLowerCase();
+  switch (extension) {
+    case 'pdf':
+      return { icon: <FaFilePdf />, color: 'text-red-500' };
+    case 'doc':
+    case 'docx':
+      return { icon: <FaFileWord />, color: 'text-blue-500' };
+    case 'ppt':
+    case 'pptx':
+      return { icon: <FaFilePowerpoint />, color: 'text-orange-500' };
+    case 'xls':
+    case 'xlsx':
+      return { icon: <FaFileExcel />, color: 'text-green-500' };
+    case 'jpg':
+    case 'jpeg':
+    case 'png':
+      return { icon: <FaFileImage />, color: 'text-pink-500' };
+    default:
+      return { icon: <FaFileAlt />, color: 'text-gray-400' };
+  }
+};
+
   
   // Ambil URL backend dari environment variable
   const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';

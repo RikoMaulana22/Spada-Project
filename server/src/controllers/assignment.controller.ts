@@ -256,16 +256,18 @@ export const getAssignmentById = async (req: AuthRequest, res: Response): Promis
     try {
         const assignment = await prisma.assignment.findUnique({
             where: { id: Number(id) },
+            // --- PERBAIKAN DI SINI ---
+            // Tambahkan 'topic' ke dalam 'include'
             include: {
                 questions: {
                     orderBy: { id: 'asc' },
                     include: {
                         options: {
-                            select: { id: true, optionText: true }, // Hanya pilih data aman
+                            select: { id: true, optionText: true },
                         },
                     },
                 },
-                  topic: {
+                topic: {
                     include: {
                         class: {
                             select: {
@@ -287,7 +289,6 @@ export const getAssignmentById = async (req: AuthRequest, res: Response): Promis
             return;
         }
         
-        // Tidak perlu memproses 'safeAssignment' lagi karena query sudah aman
         res.status(200).json(assignment);
 
     } catch (error) {

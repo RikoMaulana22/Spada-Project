@@ -1,6 +1,6 @@
-import { Response, NextFunction } from 'express';
+import {Request, Response, NextFunction } from 'express';
 import { AuthRequest } from './auth.middleware';
-type Role = 'guru' | 'siswa' | 'admin';
+type Role = 'guru' | 'siswa' | 'admin' | 'wali_kelas';
 
 export const checkRole = (roles: Role | Role[]) => {
     return (req: AuthRequest, res: Response, next: NextFunction) => {

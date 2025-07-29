@@ -1,10 +1,15 @@
-// Path: src/controllers/attendance.controller.ts
-import { Response } from 'express';
-import { PrismaClient } from '@prisma/client';
-import { AuthRequest } from '../middlewares/auth.middleware';
+    // Path: src/controllers/attendance.controller.ts
+    import { Response } from 'express';
+    import { PrismaClient } from '@prisma/client';
+    import { AuthRequest } from '../middlewares/auth.middleware';
 
-const prisma = new PrismaClient();
+    const prisma = new PrismaClient();
 
+   
+
+    // ==========================
+// 📌 Buat Sesi Absensi
+// ==========================
 export const createAttendance = async (req: AuthRequest, res: Response): Promise<void> => {
   const { topicId } = req.params;
   const { title, openTime, closeTime } = req.body;
@@ -18,7 +23,7 @@ export const createAttendance = async (req: AuthRequest, res: Response): Promise
   try {
     // Verifikasi bahwa pengguna adalah guru dari kelas tempat topik ini berada
     const topic = await prisma.topic.findUnique({
-      where: { id: Number(topicId) },
+      where: { id: parseInt(topicId) },
       include: { class: true },
     });
 
@@ -26,111 +31,122 @@ export const createAttendance = async (req: AuthRequest, res: Response): Promise
       res.status(404).json({ message: 'Topik tidak ditemukan.' });
       return;
     }
+
     if (topic.class.teacherId !== userId) {
       res.status(403).json({ message: 'Akses ditolak. Anda bukan guru pemilik kelas ini.' });
       return;
     }
 
-    // Buat sesi absensi baru
+    // ✅ Cek apakah sudah ada sesi absensi untuk topik ini
+    const existingAttendance = await prisma.attendance.findFirst({
+      where: { topicId: parseInt(topicId) }
+    });
+
+    if (existingAttendance) {
+      res.status(409).json({ message: 'Sesi absensi untuk topik ini sudah ada.' });
+      return;
+    }
+
+    // 🆕 Buat sesi absensi baru
     const newAttendance = await prisma.attendance.create({
       data: {
         title,
         openTime: new Date(openTime),
         closeTime: new Date(closeTime),
-        topicId: Number(topicId),
+        topicId: parseInt(topicId),
       },
     });
 
     res.status(201).json(newAttendance);
-  } catch (error: any) {
-    // Tangani error jika absensi untuk topik ini sudah ada (karena topicId unik)
-    if (error.code === 'P2002') {
-      res.status(409).json({ message: 'Sesi absensi untuk topik ini sudah ada.' });
-      return;
-    }
+  } catch (error) {
     console.error("Gagal membuat sesi absensi:", error);
     res.status(500).json({ message: 'Gagal membuat sesi absensi.' });
   }
 };
 
+// ==========================
+// 📌 Detail Sesi Absensi
+// ==========================
 export const getAttendanceDetails = async (req: AuthRequest, res: Response): Promise<void> => {
-    try {
-        const { id } = req.params; // Ini adalah ID dari sesi absensi
+  try {
+    const { id } = req.params;
 
-        const attendanceDetails = await prisma.attendance.findUnique({
-            where: { id: Number(id) },
-            // Ambil juga semua data relasi yang dibutuhkan oleh frontend
-            include: {
-                // Ambil semua data rekam jejak (siapa saja yang sudah absen)
-                records: {
-                    orderBy: { timestamp: 'asc' }, // Urutkan berdasarkan yang paling dulu absen
-                    // Untuk setiap rekam jejak, ambil juga data siswanya
-                    include: {
-                        student: {
-                            select: {
-                                id: true,
-                                fullName: true,
-                                nisn: true,
-                            }
-                        }
-                    }
-                }
+    const attendanceDetails = await prisma.attendance.findUnique({
+      where: { id: parseInt(id) },
+      include: {
+        records: {
+          orderBy: { timestamp: 'asc' },
+          include: {
+            student: {
+              select: {
+                id: true,
+                fullName: true,
+                nisn: true,
+              }
             }
-        });
-
-        if (!attendanceDetails) {
-            res.status(404).json({ message: "Sesi absensi tidak ditemukan." });
-            return;
+          }
         }
+      }
+    });
 
-        res.status(200).json(attendanceDetails);
-    } catch (error) {
-        console.error("Gagal mengambil detail absensi:", error);
-        res.status(500).json({ message: "Gagal mengambil detail absensi." });
+    if (!attendanceDetails) {
+      res.status(404).json({ message: "Sesi absensi tidak ditemukan." });
+      return;
     }
+
+    res.status(200).json(attendanceDetails);
+  } catch (error) {
+    console.error("Gagal mengambil detail absensi:", error);
+    res.status(500).json({ message: "Gagal mengambil detail absensi." });
+  }
 };
 
-export const markAttendanceRecord = async (req: AuthRequest, res: Response): Promise<void> => {
-  const { id: attendanceId } = req.params; // ID dari sesi absensi
+// ==========================
+// 📌 Catat Kehadiran Siswa
+// ==========================
+export const markAttendanceRecord = async (req: AuthRequest, res: Response) => {
+  const { id: attendanceId } = req.params;
   const studentId = req.user?.userId;
+  const { status, notes } = req.body;
 
   if (!studentId) {
-    res.status(401).json({ message: 'Otentikasi diperlukan.' });
-    return;
+    return res.status(401).json({ message: 'Otentikasi diperlukan.' });
+  }
+
+  if (!status) {
+    return res.status(400).json({ message: 'Status kehadiran wajib diisi.' });
   }
 
   try {
-    // 1. Cek apakah sesi absensi ada dan sedang dibuka
     const attendanceSession = await prisma.attendance.findUnique({
-      where: { id: Number(attendanceId) },
+      where: { id: parseInt(attendanceId) }
     });
 
     if (!attendanceSession) {
-      res.status(404).json({ message: 'Sesi absensi tidak ditemukan.' });
-      return;
+      return res.status(404).json({ message: 'Sesi absensi tidak ditemukan.' });
     }
 
     const now = new Date();
     if (now < attendanceSession.openTime || now > attendanceSession.closeTime) {
-      res.status(403).json({ message: 'Sesi absensi tidak sedang dibuka.' });
-      return;
+      return res.status(403).json({ message: 'Sesi absensi tidak sedang dibuka.' });
     }
-    
-    // 2. Buat catatan kehadiran baru
-    // @@unique([studentId, attendanceId]) di skema akan mencegah duplikasi
+
+    const proofUrl = req.file ? `/uploads/materials/${req.file.filename}` : undefined;
+
     const newRecord = await prisma.attendanceRecord.create({
       data: {
-        studentId: studentId,
-        attendanceId: Number(attendanceId),
+        studentId,
+        attendanceId: parseInt(attendanceId),
+        status,
+        notes,
+        proofUrl,
       },
     });
 
     res.status(201).json({ message: 'Kehadiran berhasil dicatat!', record: newRecord });
   } catch (error: any) {
-    // Tangani jika siswa sudah pernah absen (error duplikasi dari database)
     if (error.code === 'P2002') {
-      res.status(409).json({ message: 'Anda sudah mencatat kehadiran untuk sesi ini.' });
-      return;
+      return res.status(409).json({ message: 'Anda sudah mencatat kehadiran untuk sesi ini.' });
     }
     console.error("Gagal mencatat kehadiran:", error);
     res.status(500).json({ message: 'Gagal mencatat kehadiran.' });

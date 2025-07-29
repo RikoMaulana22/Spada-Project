@@ -7,11 +7,11 @@ import { checkRole } from '../middlewares/role.middleware';
 
 const router = Router();
 
-// Rute ini bisa diakses oleh semua pengguna yang sudah login (guru/siswa)
-router.get('/', getAllSubjects);
+// Tambahkan 'authenticate' untuk memastikan hanya user yang login yang bisa melihat
+router.get('/', authenticate, getAllSubjects);
 router.get('/grouped', authenticate, getGroupedSubjects);
 
-// --- RUTE BARU KHUSUS ADMIN ---
+// Rute khusus admin (sudah benar)
 router.post('/', authenticate, checkRole('admin'), createSubject);
 router.put('/:id', authenticate, checkRole('admin'), updateSubject);
 router.delete('/:id', authenticate, checkRole('admin'), deleteSubject);

@@ -79,6 +79,7 @@ export default function AddScheduleModal({ isOpen, onClose, onScheduleAdded }: A
     };
 
     return (
+        <div className="text-gray-800">
         <Modal isOpen={isOpen} onClose={handleClose} title="Tambah Jadwal Pelajaran Baru">
             <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
@@ -131,5 +132,6 @@ export default function AddScheduleModal({ isOpen, onClose, onScheduleAdded }: A
                 </div>
             </form>
         </Modal>
+        </div>
     );
 }

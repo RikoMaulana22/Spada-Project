@@ -8,8 +8,23 @@ import { getUsers,
      uploadGlobalMaterial,
      deleteGlobalMaterial,
      getAttendanceReport,
-    getGradeReport } from '../controllers/admin.controller';
-import upload from '../config/multer.config'; // Impor konfigurasi multer
+    getGradeReport,
+    assignHomeroomTeacher,
+    getAllClasses,
+    getAvailableClassesForHomeroom ,
+    getAllTeachers,
+    getAllSubjects,
+    createClass,
+    getClassEnrollments,
+    enrollStudent,
+    unenrollStudent,
+    bulkCreateUsers
+
+    
+  } from '../controllers/admin.controller';
+import { authenticate } from '../middlewares/auth.middleware'; // Pastikan authenticate diimpor
+import { checkRole } from '../middlewares/role.middleware';   // Pastikan checkRole diimpor
+import { upload } from '../middlewares/upload.middleware'; // Impor middleware upload
 
 
 const router = Router();
@@ -17,26 +32,43 @@ const router = Router();
 // Semua rute di file ini akan memiliki prefix /api/admin
 
 // GET /api/admin/users
-router.get('/users', getUsers);
+router.get('/users', authenticate, checkRole('admin'), getUsers);
 
 // POST /api/admin/users
-router.post('/users', createUser);
+router.post('/users', authenticate, checkRole('admin'), createUser);
 
-// --- TAMBAHKAN RUTE UPDATE DAN DELETE DI SINI ---
+// --- PERBAIKI RUTE UPDATE DAN DELETE DI SINI ---
+router.put('/users/:id', authenticate, checkRole('admin'), updateUser);
+router.delete('/users/:id', authenticate, checkRole('admin'), deleteUser);
 
-// PUT /api/admin/users/:id -> Mengupdate pengguna
-router.put('/users/:id', updateUser);
+// --- RUTE BARU: Untuk Manajemen Materi Global (Perlu perbaikan) ---
+router.get('/materials/global', authenticate, checkRole('admin'), getGlobalMaterialsAdmin);
+router.post('/materials/global', authenticate, checkRole('admin'), upload.single('file'), uploadGlobalMaterial);
+router.delete('/materials/global/:id', authenticate, checkRole('admin'), deleteGlobalMaterial);
+// --- Rute untuk Laporan (Perlu perbaikan) ---
+router.get('/reports/attendance', authenticate, checkRole('admin'), getAttendanceReport);
+router.get('/reports/grades', authenticate, checkRole('admin'), getGradeReport);
+// --- RUTE BARU UNTUK KELOLA KELAS (Perlu perbaikan) ---
+// --- RUTE UNTUK MANAJEMEN KELAS ---
+router.get('/classes', authenticate, checkRole('admin'), getAllClasses);
+router.get('/teachers', authenticate, checkRole('admin'), getAllTeachers);
+router.get('/subjects', authenticate, checkRole('admin'), getAllSubjects);
+router.post('/classes', authenticate, checkRole('admin'), createClass);
+router.get('/classes', authenticate, checkRole('admin'), getAllClasses);
+router.put('/classes/:classId/assign-homeroom', authenticate, checkRole('admin'), assignHomeroomTeacher);;
+router.get(
+    '/classes/available-for-homeroom', 
+    authenticate, 
+    checkRole('admin'), 
+    getAvailableClassesForHomeroom
+);
 
-// DELETE /api/admin/users/:id -> Menghapus pengguna
-router.delete('/users/:id', deleteUser);
-// --- RUTE BARU: Untuk Manajemen Materi Global ---
-router.get('/materials/global', getGlobalMaterialsAdmin);
-router.post('/materials/global', upload.single('file'), uploadGlobalMaterial);
-router.delete('/materials/global/:id', deleteGlobalMaterial);
-// --- Rute untuk Laporan ---
-router.get('/reports/attendance', getAttendanceReport);
-router.get('/reports/grades', getGradeReport);
+// Rute untuk manajemen pendaftaran siswa (enrollment)
+router.get('/classes/:classId/enrollments', authenticate, checkRole('admin'), getClassEnrollments);
+router.post('/classes/:classId/enrollments', authenticate, checkRole('admin'), enrollStudent);
+router.delete('/classes/:classId/enrollments/:studentId', authenticate, checkRole('admin'), unenrollStudent);
 
+router.post('/users/bulk', authenticate, checkRole('admin'), upload.single('file'), bulkCreateUsers);
 
 
 

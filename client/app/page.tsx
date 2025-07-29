@@ -1,87 +1,79 @@
 'use client';
 
 import { useState } from 'react';
-import { FaSearch } from 'react-icons/fa';
-import { FaChevronDown, FaChevronRight } from 'react-icons/fa';
+import apiClient from '@/lib/axios'; // <-- Impor apiClient
+import toast from 'react-hot-toast'; // <-- Impor toast
+import ScheduleModal from '@/components/schedule/ScheduleModal'; // <-- Impor modal baru
+import Image from 'next/image'; // <-- Tambahkan impor Image dari next/image
 
 export default function HomePage() {
-  const [searchText, setSearchText] = useState('');
-  const [expandedClass, setExpandedClass] = useState<number | null>(null); // 7, 8, 9
+    // --- TAMBAHKAN STATE BARU DI SINI ---
+    const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
+    const [scheduleData, setScheduleData] = useState(null);
+    const [isLoadingSchedule, setIsLoadingSchedule] = useState(false);
 
-  const [active, setActive] = useState(false);
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    console.log('Cari:', searchText);
-  };
+    // --- TAMBAHKAN FUNGSI BARU DI SINI ---
+    const handleShowSchedule = async () => {
+        setIsLoadingSchedule(true);
+        try {
+            const response = await apiClient.get('/schedules/public');
+            setScheduleData(response.data);
+            setIsScheduleModalOpen(true);
+        } catch (error) {
+            toast.error("Gagal memuat jadwal pelajaran.");
+        } finally {
+            setIsLoadingSchedule(false);
+        }
+    };
 
-  // Data mapel tiap kelas
-  const subjectsByClass = {
-    7: ['Matematika', 'IPA', 'IPS', 'Bahasa Indonesia'],
-    8: ['Fisika', 'PKN', 'Biologi', 'Bahasa Inggris'],
-    9: ['Kimia', 'Ekonomi', 'Seni Budaya', 'PJOK'],
-  };
+    return (
+        <>
+            {/* Render modal di sini */}
+            <ScheduleModal 
+                isOpen={isScheduleModalOpen}
+                onClose={() => setIsScheduleModalOpen(false)}
+                scheduleData={scheduleData}
+            />
 
-  const toggleClass = (grade: number) => {
-    setExpandedClass((prev) => (prev === grade ? null : grade));
-  };
-
-  return (
-    <div>
-      <h1 className="text-2xl font-semibold text-gray-700 mb-6">
-        Sistem Pembelajaran dalam Jaringan
-      </h1>
-
-      <div className="bg-white p-10 rounded-lg shadow-md">
-        {/* Search Bar */}
-        <form onSubmit={handleSubmit} className="mb-8 flex items-center max-w-lg">
-          <input
-            type="text"
-            value={searchText}
-            onChange={(e) => setSearchText(e.target.value)}
-            placeholder="Search courses"
-            className="w-full px-4 py-1 border text-gray-600 border-gray-300 rounded-l-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-          <button
-            type="submit"
-            className="bg-blue-600 text-white px-4 py-2 border border-blue-600 rounded-r-md hover:bg-blue-700"
-            aria-label="Search"
-          >
-            <FaSearch />
-          </button>
-        </form>
-
-        {/* Course Categories */}
-        <div>
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">Kategori Kelas</h2>
-          {active && ( 
-          <ul className="space-y-2 list-none ml-4">
-            {[7, 8, 9].map((grade) => (
-              <li key={grade}>
-                <button
-                  onClick={() => toggleClass(grade)}
-                  className="flex items-center text-blue-600 font-medium focus:outline-none"
-                >
-                  {/* start */}
-                  {expandedClass === grade ? <FaChevronDown className="mr-2" /> : <FaChevronRight className="mr-2" />}
-                  Kelas {['VII', 'VIII', 'IX'][grade - 7]}
-                  {/* finish */}
-                </button>
-
-{/* start */}
-                {expandedClass === grade && (
-                  <ul className="ml-6 mt-1 space-y-1">
-                    {subjectsByClass[grade as 7 | 8 | 9].map((subject, index) => (
-                      <li key={index} className="text-gray-700">{subject}</li>
-                    ))}
-                  </ul>
-                )}
-                {/* finish */}
-              </li>
-            ))}
-          </ul>
-          )}
-        </div>
-      </div>
-    </div>
-  );
+            <div className="space-y-10 text-gray-800">
+                <section className="flex flex-col md:flex-row items-center bg-white p-8 ...">
+                    <div className="md:w-1/2 space-y-4">
+                        <h1 className="text-3xl font-bold ...">
+                            Selamat Datang di Sistem Pembelajaran Daring
+                        </h1>
+                        <p className="text-gray-700 text-lg leading-relaxed"><strong>SMPN Satu Atap 1 Way Tenong</strong>.
+                        Platform ini dirancang untuk mempermudah proses belajar mengajar antara guru dan siswa secara online.
+                        Dengan sistem yang terintegrasi, siswa dapat mengakses materi pembelajaran, mengerjakan tugas, mengikuti ujian,
+                        serta melihat jadwal pelajaran kapan saja dan di mana saja.
+                        </p>
+                        
+                        {/* ... */}
+                        <div className="flex space-x-4">
+                            {/* --- UBAH TOMBOL INI --- */}
+                            <button 
+                                onClick={handleShowSchedule}
+                                disabled={isLoadingSchedule}
+                                className="bg-blue-500 font-bold text-gray-800 px-4 py-2 rounded hover:bg-gray-300 transition"
+                            >
+                                {isLoadingSchedule ? 'Memuat...' : 'Lihat Jadwal Pelajaran'}
+                            </button>
+                        </div>
+                    </div>
+                    {/* ... */}
+                    {/* --- 2. TAMBAHKAN GAMBAR DI SINI --- */}
+                    <div className="md:w-1/2 mt-8 md:mt-0 md:pl-16">
+                        <Image
+                            src="/images/pngtoga.png" // Ganti dengan path gambar Anda
+                            alt="Siswa Belajar Online"
+                            width={500}
+                            height={350}
+                            className="rounded-lg"
+                            priority
+                        />
+                    </div>
+                </section>
+                {/* ... */}
+            </div>
+        </>
+    );
 }

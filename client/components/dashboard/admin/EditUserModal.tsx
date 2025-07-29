@@ -55,6 +55,7 @@ export default function EditUserModal({ isOpen, onClose, user, onUserUpdated }: 
   };
 
   return (
+    <div className="text-gray-800">
     <Modal isOpen={isOpen} onClose={onClose} title={`Edit Pengguna: ${user?.fullName}`}>
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Form fields are similar to AddUserModal */}
@@ -71,6 +72,7 @@ export default function EditUserModal({ isOpen, onClose, user, onUserUpdated }: 
             <select name="role" value={formData.role} onChange={handleChange} className="form-select mt-1 w-full">
                 <option value="siswa">Siswa</option>
                 <option value="guru">Guru</option>
+                <option value="wali_kelas">Wali Kelas</option>
             </select>
         </div>
         {formData.role === 'siswa' && (
@@ -91,5 +93,6 @@ export default function EditUserModal({ isOpen, onClose, user, onUserUpdated }: 
         </div>
       </form>
     </Modal>
+    </div>
   );
 }

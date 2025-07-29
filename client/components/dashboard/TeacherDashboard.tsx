@@ -13,8 +13,6 @@ export default function TeacherDashboard({ user }: { user: User }) {
   const [myClasses, setMyClasses] = useState<ClassSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  
-  // State baru
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [globalMaterials, setGlobalMaterials] = useState<GlobalMaterial[]>([]);
   const [mySchedules, setMySchedules] = useState<ScheduleItem[]>([]);
@@ -22,28 +20,22 @@ export default function TeacherDashboard({ user }: { user: User }) {
   const fetchData = useCallback(async () => {
     setIsLoading(true);
     try {
-      const myClassesPromise = apiClient.get('/classes/teacher');
-      const announcementsPromise = apiClient.get('/announcements');
-      const globalMaterialsPromise = apiClient.get('/materials/global');
-      const schedulePromise = apiClient.get('/schedules/my');
-
       const [
-        myClassesResponse, 
+        myClassesResponse,
         announcementsResponse,
         globalMaterialsResponse,
         schedulesResponse
       ] = await Promise.all([
-        myClassesPromise,
-        announcementsPromise,
-        globalMaterialsPromise,
-        schedulePromise,
+        apiClient.get('/classes/teacher'),
+        apiClient.get('/announcements'),
+        apiClient.get('/materials/global'),
+        apiClient.get('/schedules/my')
       ]);
 
       setMyClasses(myClassesResponse.data);
       setAnnouncements(announcementsResponse.data);
       setGlobalMaterials(globalMaterialsResponse.data);
       setMySchedules(schedulesResponse.data);
-
     } catch (error) {
       console.error('Gagal mengambil data dashboard guru:', error);
     } finally {
@@ -55,9 +47,29 @@ export default function TeacherDashboard({ user }: { user: User }) {
     fetchData();
   }, [fetchData]);
 
+  const handleEditClass = (classId: string) => {
+    console.log('Edit kelas dengan ID:', classId);
+    // TODO: Implementasi modal edit atau redirect ke halaman edit
+    // Misal redirect: router.push(`/kelas/edit/${classId}`);
+  };
+
+  const handleDeleteClass = async (classId: string) => {
+    const confirmDelete = confirm('Apakah Anda yakin ingin menghapus kelas ini?');
+    if (!confirmDelete) return;
+
+    try {
+      await apiClient.delete(`/classes/${classId}`);
+      fetchData(); // Refresh data setelah penghapusan
+    } catch (error) {
+      console.error('Gagal menghapus kelas:', error);
+      alert('Gagal menghapus kelas. Silakan coba lagi.');
+    }
+  };
+
   return (
     <>
       <div className="container mx-auto p-4 md:p-8 space-y-8 text-gray-800">
+        {/* Header */}
         <div className="flex justify-between items-center">
           <div>
             <h1 className="text-3xl font-bold">Dashboard Guru</h1>
@@ -70,13 +82,13 @@ export default function TeacherDashboard({ user }: { user: User }) {
             + Buat Kelas Baru
           </button>
         </div>
-        
-        {/* Tampilkan semua section baru */}
+
+        {/* Sections */}
         <AnnouncementSection isLoading={isLoading} announcements={announcements} />
         <TodayScheduleSection isLoading={isLoading} schedules={mySchedules} />
         <GlobalMaterialsSection isLoading={isLoading} materials={globalMaterials} />
 
-        {/* Section Kelas yang Diajar */}
+        {/* Section Kelas */}
         <div className="bg-white p-6 rounded-lg shadow-md">
           <h2 className="text-xl font-semibold mb-4 text-gray-800">Kelas yang Anda Ajar</h2>
           {isLoading ? (
@@ -85,13 +97,34 @@ export default function TeacherDashboard({ user }: { user: User }) {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {myClasses.length > 0 ? (
                 myClasses.map((cls) => (
-                  <Link href={`/kelas/${cls.id}`} key={cls.id}>
-                    <div className="border p-4 rounded-lg hover:shadow-lg hover:border-blue-500 transition-all cursor-pointer h-full">
-                      <h3 className="font-bold text-lg text-gray-800">{cls.name}</h3>
-                      <p className="text-sm text-gray-500">{cls.subject.name}</p>
-                      <p className="text-sm mt-4 font-semibold text-gray-700">{cls._count.members} Siswa</p>
+                  <div
+                    key={cls.id}
+                    className="border p-4 rounded-lg hover:shadow-lg transition-all h-full relative"
+                  >
+                    <Link href={`/kelas/${cls.id}`}>
+                      <div className="cursor-pointer">
+                        <h3 className="font-bold text-lg text-gray-800">{cls.name}</h3>
+                        <p className="text-sm text-gray-500">{cls.subject.name}</p>
+                        <p className="text-sm mt-4 font-semibold text-gray-700">
+                          {cls._count.members} Siswa
+                        </p>
+                      </div>
+                    </Link>
+                    <div className="flex gap-4 mt-4">
+                      <button
+                        onClick={() => handleEditClass(cls.id.toString())}
+                        className="text-blue-600 hover:underline text-sm"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => handleDeleteClass(cls.id.toString())}
+                        className="text-red-600 hover:underline text-sm"
+                      >
+                        Hapus
+                      </button>
                     </div>
-                  </Link>
+                  </div>
                 ))
               ) : (
                 <p>Anda belum membuat kelas.</p>
@@ -100,7 +133,13 @@ export default function TeacherDashboard({ user }: { user: User }) {
           )}
         </div>
       </div>
-      <CreateClassModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onClassCreated={fetchData} />
+
+      {/* Modal Buat Kelas */}
+      <CreateClassModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onClassCreated={fetchData}
+      />
     </>
   );
 }

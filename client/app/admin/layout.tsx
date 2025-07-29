@@ -4,7 +4,7 @@ import { useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter, usePathname } from 'next/navigation'; // <-- 1. Impor usePathname
 import Link from 'next/link';
-import { FaUsers, FaBook, FaChartBar, FaFileAlt, FaRss, FaSignOutAlt, FaCog, FaCalendarCheck  } from 'react-icons/fa'; // Tambahkan FaCog untuk Pengaturan
+import { FaUsers, FaBook, FaChartBar, FaFileAlt, FaRss, FaSignOutAlt, FaCog, FaCalendarCheck,FaChalkboardTeacher  } from 'react-icons/fa'; // Tambahkan FaCog untuk Pengaturan
 import { User as GlobalUserType, Settings } from '@/types'; // Asumsikan Settings ada di types
 
 export default function AdminLayout({
@@ -57,6 +57,9 @@ export default function AdminLayout({
         <nav className="flex flex-col space-y-1">
           <Link href="/admin/pengguna" className={`flex items-center gap-3 p-2 rounded-md text-sm ${pathname.startsWith('/admin/pengguna') ? 'bg-gray-900' : 'hover:bg-gray-700'}`}>
             <FaUsers /><span>Pengguna</span>
+          </Link>
+          <Link href="/admin/kelas" className={`flex items-center gap-3 p-2 rounded-md text-sm ${pathname.startsWith('/admin/kelas') ? 'bg-gray-900' : 'hover:bg-gray-700'}`}>
+          <FaChalkboardTeacher /><span>Kelola Kelas</span>
           </Link>
           <Link href="/admin/mapel" className={`flex items-center gap-3 p-2 rounded-md text-sm ${pathname.startsWith('/admin/mapel') ? 'bg-gray-900' : 'hover:bg-gray-700'}`}>
             <FaBook /><span>Mata Pelajaran</span>

@@ -124,7 +124,7 @@ export default function AssignmentPage() {
   if (!assignment) return notFound();
 
   // Variabel untuk verifikasi guru
-  const isTeacher = user?.role === 'guru' && user?.id === assignment?.topic.class.teacher.id;
+const isTeacher = user?.role === 'guru' && user?.id === assignment?.topic?.class?.teacher?.id;
 
   return (
     <div className="container mx-auto p-4 md:p-8 text-gray-700">
