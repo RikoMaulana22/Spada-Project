@@ -36,7 +36,11 @@ const fileFilter = (req: Request, file: Express.Multer.File, cb: multer.FileFilt
         'application/msword', // .doc
         'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // .docx
         'application/vnd.ms-powerpoint', // .ppt
-        'application/vnd.openxmlformats-officedocument.presentationml.presentation' // .pptx
+        'application/vnd.openxmlformats-officedocument.presentationml.presentation', // .pptx
+
+        'text/csv',
+        'application/csv',
+        'application/vnd.ms-excel'
     ];
 
     if (allowedMimes.includes(file.mimetype)) {

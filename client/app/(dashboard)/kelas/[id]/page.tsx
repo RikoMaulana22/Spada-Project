@@ -5,7 +5,7 @@ import { useParams } from 'next/navigation';
 import apiClient from '@/lib/axios';
 import Link from 'next/link';
 
-import { FaChevronDown, FaChevronRight, FaFilePdf, FaClipboardList, FaPencilAlt, FaTrash, FaCalendarCheck, FaYoutube } from 'react-icons/fa';
+import { FaChevronDown, FaChevronRight, FaFilePdf, FaClipboardList, FaArrowLeft, FaPencilAlt, FaTrash, FaCalendarCheck, FaYoutube } from 'react-icons/fa';
 import YouTubeEmbed from '@/components/ui/YouTubeEmbed';
 
 import { useAuth } from '@/contexts/AuthContext';
@@ -25,7 +25,16 @@ interface MaterialInfo {
   fileUrl?: string | null;
   youtubeUrl?: string | null;
 }
-interface AssignmentInfo { id: number; title: string; type: string; dueDate: string; }
+interface AssignmentInfo { 
+    id: number; 
+    title: string; 
+    type: string;
+    dueDate: string; 
+    attemptLimit: number;
+    studentProgress: {
+        attemptCount: number;
+        highestScore?: number;
+    } | null;}
 interface AttendanceInfo { id: number; title: string; }
 interface TopicInfo {
   id: number;
@@ -86,7 +95,7 @@ export default function ClassDetailPage() {
                 setIsLoading(false);
             }
         }
-    }, [id, classData]);
+    }, [id]);
 
     useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -157,6 +166,10 @@ export default function ClassDetailPage() {
 
             {/* --- Page Display --- */}
             <div className="space-y-6">
+                 <Link href="/dashboard" className="inline-flex items-center gap-2 text-gray-600 hover:text-blue-700 font-medium transition-colors">
+                    <FaArrowLeft />
+                    <span>Kembali ke Daftar Kelas</span>
+                </Link>
                 <div className="flex justify-between items-center pb-4 mb-4 border-b border-gray-200">
                     <h1 className="text-3xl font-bold text-gray-800">{classData.name}</h1>
                     {isTeacher && (
@@ -206,14 +219,52 @@ export default function ClassDetailPage() {
                                         </div>
                                     ))}
                                     
-                                    {topic.assignments?.map((assignment) => (
-                                        <div key={assignment.id} className="flex justify-between items-center p-3 bg-slate-50 border rounded-md hover:bg-slate-100 transition-colors">
-                                            <Link href={`/tugas/${assignment.id}`} className="flex items-center gap-3 text-gray-700 font-semibold">
-                                                <FaClipboardList className="text-green-500" />
-                                                <span>{assignment.title}</span>
-                                            </Link>
-                                        </div>
-                                    ))}
+                                    {topic.assignments?.map((assignment) => {
+    // 1. Ambil data yang relevan dari setiap tugas
+    const isStudent = user?.role === 'siswa';
+    const attemptLimit = assignment.attemptLimit || 1;
+    const studentAttemptCount = assignment.studentProgress?.attemptCount || 0;
+    
+    // 2. Tentukan apakah siswa masih bisa mengerjakan tugas ini
+    const canStillAttempt = !isStudent || (studentAttemptCount < attemptLimit);
+    
+    return (
+        <div 
+            key={assignment.id} 
+            className={`flex justify-between items-center p-3 border rounded-md transition-colors ${
+                canStillAttempt
+                    ? 'bg-slate-50 hover:bg-slate-100' // Tampilan jika bisa diakses
+                    : 'bg-gray-200 text-gray-500'      // Tampilan jika sudah tidak bisa
+            }`}
+        >
+            {canStillAttempt ? (
+                // JIKA SISWA MASIH PUNYA KESEMPATAN (atau jika Anda adalah GURU)
+                <Link href={`/tugas/${assignment.id}`} className="flex items-center gap-3 font-semibold text-gray-700 w-full">
+                    <FaClipboardList className="text-green-500" />
+                    <div className="flex-grow">
+                        <span>{assignment.title}</span>
+                    </div>
+                    {isStudent && (
+                        <span className="text-sm text-blue-600 font-normal">
+                            Sisa: {attemptLimit - studentAttemptCount}x
+                        </span>
+                    )}
+                </Link>
+            ) : (
+                // JIKA KESEMPATAN SISWA SUDAH HABIS
+                <div className="flex items-center gap-3 font-semibold w-full cursor-not-allowed">
+                    <FaClipboardList className="text-gray-400" />
+                    <div className="flex-grow">
+                        <span>{assignment.title}</span>
+                    </div>
+                    <span className="text-sm text-red-600 font-bold">
+                        Selesai
+                    </span>
+                </div>
+            )}
+        </div>
+    );
+})}
                                     
                                     {topic.attendance && (
                                         <div className="flex justify-between items-center p-3 bg-slate-50 border rounded-md hover:bg-slate-100 transition-colors">

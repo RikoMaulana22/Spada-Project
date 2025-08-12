@@ -74,13 +74,13 @@ export default function ManageSchedulesPage() {
                 <div className="bg-white p-6 rounded-lg shadow-md overflow-x-auto">
                     <table className="w-full text-left text-sm">
                         <thead className="border-b bg-gray-50">
-                            <tr>
-                                <th className="py-3 px-4">Hari</th>
-                                <th className="py-3 px-4">Waktu</th>
-                                <th className="py-3 px-4">Kelas</th>
-                                <th className="py-3 px-4">Mata Pelajaran</th>
-                                <th className="py-3 px-4">Guru</th>
-                                <th className="py-3 px-4">Aksi</th>
+                            <tr className='bg-yellow-200 text-gray-700 border font-bold font-large text-left text-l uppercase'>
+                                <th className="py-3 px-4 border border-gray-300">Hari</th>
+                                <th className="py-3 px-4 border border-gray-300">Waktu</th>
+                                <th className="py-3 px-4 border border-gray-300">Kelas</th>
+                                <th className="py-3 px-4 border border-gray-300">Mata Pelajaran</th>
+                                <th className="py-3 px-4 border border-gray-300">Guru</th>
+                                <th className="py-3 px-4 border border-gray-300">Aksi</th>
                             </tr>
                         </thead>
                         <tbody>

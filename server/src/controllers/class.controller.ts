@@ -11,6 +11,10 @@ export const createClass = async (req: AuthRequest, res: Response): Promise<void
         const { name, description, subjectId } = req.body;
         const teacherId = req.user?.userId;
 
+        // --- PERBAIKAN DI SINI ---
+        // Hapus 'public' dari path sebelum disimpan ke database
+        const imageUrl = req.file ? req.file.path.replace('public', '').replace(/\\/g, '/') : null;
+
         if (!name || !subjectId || !teacherId) {
             res.status(400).json({ message: 'Nama kelas, ID mata pelajaran, dan ID guru wajib diisi.' });
             return;
@@ -21,11 +25,13 @@ export const createClass = async (req: AuthRequest, res: Response): Promise<void
                 name,
                 description,
                 teacherId,
-                subjectId: Number(subjectId)
+                subjectId: Number(subjectId),
+                imageUrl: imageUrl, // Path yang disimpan sekarang lebih bersih (misal: /uploads/materials/...)
             }
         });
         res.status(201).json(newClass);
     } catch (error) {
+        // ... (blok catch tidak berubah)
         console.error("Gagal membuat kelas:", error);
         if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2003') {
             res.status(400).json({ message: 'ID Mata Pelajaran tidak valid.' });
@@ -45,7 +51,10 @@ export const getTeacherClasses = async (req: AuthRequest, res: Response): Promis
         }
         const classes = await prisma.class.findMany({
             where: { teacherId },
-            include: {
+            select: { // <-- Ubah dari include menjadi select
+                id: true,
+                name: true,
+                imageUrl: true, // <-- TAMBAHKAN INI
                 subject: true,
                 _count: {
                     select: { members: true }
@@ -70,7 +79,7 @@ export const getClassById = async (req: AuthRequest, res: Response): Promise<voi
 
         const classData = await prisma.class.findUnique({
             where: { id: Number(id) },
-            // Query ini memastikan SEMUA data yang dibutuhkan frontend diambil
+            // Query ini sudah benar, tidak perlu diubah
             include: {
                 subject: true,
                 teacher: { 
@@ -83,19 +92,19 @@ export const getClassById = async (req: AuthRequest, res: Response): Promise<voi
                     where: { studentId: userId },
                     select: { studentId: true }
                 },
-                // Ini adalah bagian paling penting
                 topics: {
-                    orderBy: {
-                        order: 'asc'
-                    },
+                    orderBy: { order: 'asc' },
                     include: {
-                        materials: { // <-- Mengambil semua materi
-                            orderBy: { createdAt: 'asc' }
+                        materials: { orderBy: { createdAt: 'asc' } },
+                        assignments: {
+                            orderBy: { createdAt: 'asc' },
+                            include: {
+                                submissions: {
+                                    where: { studentId: userId }
+                                }
+                            }
                         },
-                        assignments: { // <-- Mengambil semua tugas
-                            orderBy: { createdAt: 'asc' }
-                        },
-                        attendance: true // <-- Mengambil data absensi
+                        attendance: true
                     }
                 },
             },
@@ -105,11 +114,40 @@ export const getClassById = async (req: AuthRequest, res: Response): Promise<voi
             res.status(404).json({ message: 'Kelas tidak ditemukan.' });
             return;
         }
+        
+        // --- PERBAIKAN DIMULAI DI SINI ---
+        // Logika untuk memproses data pengerjaan siswa
+        const processedTopics = classData.topics.map(topic => {
+            const processedAssignments = topic.assignments.map(assignment => {
+                // Ambil submissions dari hasil query (tipenya any karena tidak ada di model include awal)
+                const submissions = (assignment as any).submissions || [];
+                
+                // Buat objek studentProgress yang bersih
+                const studentProgress = {
+                    attemptCount: submissions.length,
+                    highestScore: submissions.length > 0
+                        ? Math.max(...submissions.map((sub: { score: number | null }) => sub.score || 0))
+                        : null
+                };
 
+                // Hapus properti submissions mentah agar tidak dikirim ke frontend
+                delete (assignment as any).submissions;
+
+                // Kembalikan assignment dengan properti studentProgress yang baru
+                return { ...assignment, studentProgress };
+            });
+
+            // Kembalikan topik dengan data assignment yang sudah diproses
+            return { ...topic, assignments: processedAssignments };
+        });
+        
         const isEnrolled = classData.members.length > 0 || classData.teacher.id === userId;
         const { members, ...responseData } = classData;
 
-        res.status(200).json({ ...responseData, isEnrolled });
+        // Kirim data yang sudah diproses sepenuhnya ke frontend
+        res.status(200).json({ ...responseData, topics: processedTopics, isEnrolled });
+        // --- AKHIR PERBAIKAN ---
+
     } catch (error) {
         console.error("Gagal mengambil detail kelas:", error);
         res.status(500).json({ message: 'Gagal mengambil detail kelas.' });
@@ -230,8 +268,13 @@ export const getStudentClasses = async (req: AuthRequest, res: Response): Promis
                     in: enrolledClassIds,
                 },
             },
-            include: {
-                subject: true,
+             select: { // <-- Ubah dari include menjadi select
+                id: true,
+                name: true,
+                imageUrl: true, // <-- TAMBAHKAN INI
+                subject: {
+                    select: { name: true }
+                },
                 teacher: {
                     select: { fullName: true }
                 },

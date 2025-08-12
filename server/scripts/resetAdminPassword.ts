@@ -4,7 +4,8 @@ import bcrypt from 'bcrypt';
 const prisma = new PrismaClient();
 
 async function main() {
-    // --- GANTI DETAIL DI BAWAH INI ---
+    // --- GANTI DETAIL DI BAWAH INI ---// npx ts-node scripts/resetAdminPassword.ts
+
     const usernameToUpdate = "admin"; // Ganti dengan username yang mau direset
     const newPassword = "admin123"; // Atur password baru yang Anda inginkan
     // ------------------------------------

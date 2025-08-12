@@ -7,42 +7,46 @@ const prisma = new PrismaClient();
 export const getHomeroomDashboard = async (req: AuthRequest, res: Response) => {
     const teacherId = req.user?.userId;
     try {
-        // 1. Cari kelas di mana user ini adalah wali kelasnya
         const homeroomClass = await prisma.class.findFirst({
             where: { homeroomTeacherId: teacherId },
             include: {
-                // 2. Ambil daftar siswa di kelas tersebut
                 members: {
-                    select: {
-                        user: {
-                            select: { id: true, fullName: true, nisn: true }
-                        }
-                    }
+                    select: { user: { select: { id: true, fullName: true, nisn: true } } }
                 },
-                // 3. Ambil semua catatan wali kelas untuk kelas ini
-                studentNotes: {
-                    orderBy: { date: 'desc' },
-                    include: {
-                        student: { select: { fullName: true } }
-                    }
-                },
-                // 4. Ambil semua data absensi harian untuk kelas ini
-                dailyAttendances: true,
-                // 5. Ambil semua komponen nilai dan nilai siswa untuk kelas ini
-                gradeComponents: {
-                    include: {
-                        grades: true,
-                        subject: { select: { name: true } } // Ambil nama mapel
-                    }
-                }
+                studentNotes: { /* ... */ },
+                gradeComponents: { /* ... */ }
             }
         });
 
         if (!homeroomClass) {
-            return res.status(404).json({ message: 'Anda tidak ditugaskan sebagai wali kelas di kelas mana pun.' });
+            return res.status(404).json({ message: 'Anda tidak ditugaskan sebagai wali kelas.' });
         }
 
-        res.json(homeroomClass);
+        const studentIds = homeroomClass.members.map(member => member.user.id);
+
+        const dailyAttendances = await prisma.dailyAttendance.findMany({
+            where: {
+                studentId: { in: studentIds }
+            },
+            include: {
+                class: {
+                    select: {
+                        subject: {
+                            select: {
+                                name: true
+                            }
+                        }
+                    }
+                }
+            }
+        });
+        
+        const responseData = {
+            ...homeroomClass,
+            dailyAttendances
+        };
+
+        res.json(responseData); // Pastikan mengirim responseData
     } catch (error) {
         console.error("Error getHomeroomDashboard:", error);
         res.status(500).json({ message: 'Gagal memuat data dashboard.' });
@@ -83,27 +87,74 @@ export const addHomeroomNote = async (req: AuthRequest, res: Response) => {
 export const getStudentDetailsForHomeroom = async (req: AuthRequest, res: Response) => {
     const { studentId } = req.params;
     const teacherId = req.user?.userId;
+
     try {
-        // Cek apakah guru ini adalah wali kelas dari siswa ini
+        // Verifikasi keamanan (tidak berubah)
         const student = await prisma.user.findUnique({
-            where: { id: parseInt(studentId) },
+            where: { id: Number(studentId) },
             include: { memberships: { include: { class: true } } }
         });
-
         const isHomeroomTeacher = student?.memberships.some(m => m.class.homeroomTeacherId === teacherId);
         if (!isHomeroomTeacher) {
             return res.status(403).json({ message: 'Akses ditolak.' });
         }
 
-        // Ambil data detail siswa
-        const dailyAttendances = await prisma.dailyAttendance.findMany({ where: { studentId: parseInt(studentId) }, orderBy: { date: 'desc' } });
-        const grades = await prisma.studentGrade.findMany({ 
-            where: { studentId: parseInt(studentId) },
-            include: { component: { include: { subject: true } } }
+        // 1. Ambil data nilai dari tabel `Submission` (tidak berubah)
+        const submissions = await prisma.submission.findMany({ 
+            where: { 
+                studentId: Number(studentId),
+                score: { not: null }
+            },
+            include: { 
+                assignment: {
+                    include: {
+                        topic: {
+                            include: {
+                                class: {
+                                    include: {
+                                        subject: true
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         });
 
-        res.json({ dailyAttendances, grades });
+        // --- PERBAIKAN DI SINI: Saring data yang tidak lengkap ---
+        const validSubmissions = submissions.filter(sub =>
+            sub.assignment &&
+            sub.assignment.topic &&
+            sub.assignment.topic.class &&
+            sub.assignment.topic.class.subject
+        );
+
+        // 2. Transformasi data yang SUDAH BERSIH
+        const transformedGrades = validSubmissions.map(sub => ({
+            id: sub.id,
+            score: sub.score,
+            studentId: sub.studentId,
+            component: {
+                // Sekarang aman untuk diakses tanpa error TypeScript
+                name: sub.assignment.title, 
+                subject: {
+                    name: sub.assignment.topic?.class.subject.name
+                }
+            }
+        }));
+
+        // 3. Ambil data absensi (tidak berubah)
+        const dailyAttendances = await prisma.dailyAttendance.findMany({ 
+            where: { studentId: Number(studentId) }, 
+            orderBy: { date: 'desc' } 
+        });
+
+        // 4. Kirim data yang sudah bersih dan ditransformasi
+        res.json({ dailyAttendances, grades: transformedGrades });
+
     } catch (error) {
+        console.error("Gagal mengambil detail siswa:", error);
         res.status(500).json({ message: 'Gagal mengambil detail siswa.' });
     }
 };
@@ -123,6 +174,38 @@ export const updateStudentAttendance = async (req: AuthRequest, res: Response) =
     }
 };
 
+// --- TAMBAHKAN FUNGSI BARU DI SINI ---
+/**
+ * @description Menghapus satu catatan absensi harian berdasarkan ID-nya.
+ * @route DELETE /api/homeroom/attendance/:attendanceId
+ */
+export const deleteStudentAttendance = async (req: AuthRequest, res: Response) => {
+    const { attendanceId } = req.params;
+    // Anda bisa menambahkan validasi keamanan di sini jika perlu,
+    // misalnya memastikan yang menghapus adalah wali kelas yang berhak.
+
+    try {
+        // Cari catatan absensi untuk memastikan ada sebelum dihapus
+        const attendanceToDelete = await prisma.dailyAttendance.findUnique({
+            where: { id: parseInt(attendanceId) }
+        });
+
+        if (!attendanceToDelete) {
+            return res.status(404).json({ message: 'Catatan absensi tidak ditemukan.' });
+        }
+
+        // Lakukan operasi hapus
+        await prisma.dailyAttendance.delete({
+            where: { id: parseInt(attendanceId) },
+        });
+
+        res.status(200).json({ message: 'Catatan absensi berhasil dihapus.' });
+    } catch (error) {
+        console.error("Gagal menghapus catatan absensi:", error);
+        res.status(500).json({ message: 'Gagal menghapus catatan absensi.' });
+    }
+};
+
 // Memperbarui satu record nilai
 export const updateStudentGrade = async (req: AuthRequest, res: Response) => {
     const { gradeId } = req.params;
@@ -137,3 +220,4 @@ export const updateStudentGrade = async (req: AuthRequest, res: Response) => {
         res.status(500).json({ message: 'Gagal memperbarui nilai.' });
     }
 };
+

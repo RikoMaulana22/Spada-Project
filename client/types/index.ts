@@ -35,6 +35,7 @@ export interface ClassSummary {
   id: number;
   name: string;
   description: string | null;
+  imageUrl?: string | null; 
  subject: {
     name: string;
   };

@@ -58,7 +58,7 @@ export default function AddClassModal({ isOpen, onClose, onClassCreated }: AddCl
     };
 
     return (
-        <div className='text-gray-800'>
+        <div className=' text-gray-800'>
         <Modal isOpen={isOpen} onClose={onClose} title="Buat Kelas Baru">
             <form onSubmit={handleSubmit} className="space-y-4">
                 <div>

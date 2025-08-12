@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import { useState, useEffect, useCallback, FormEvent } from 'react';
 import { useParams, useRouter, notFound } from 'next/navigation';
@@ -6,6 +6,7 @@ import Link from 'next/link';
 import apiClient from '@/lib/axios';
 import toast from 'react-hot-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import QuizTimer from '@/components/quiz/QuizTimer'; // Impor komponen timer
 
 // Definisikan tipe data
 interface Option {
@@ -26,8 +27,7 @@ interface AssignmentDetails {
   questions: Question[];
   topic: {
     class: {
-      id: number; 
-      // teacherId diganti dengan objek teacher
+      id: number;
       teacher: {
         id: number;
       };
@@ -49,6 +49,7 @@ export default function AssignmentPage() {
   const [answers, setAnswers] = useState<Record<number, number>>({});
   const [essayAnswer, setEssayAnswer] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [startTime, setStartTime] = useState<Date | null>(null);
 
   const fetchData = useCallback(async () => {
     if (!assignmentId) return;
@@ -56,6 +57,7 @@ export default function AssignmentPage() {
     try {
       const response = await apiClient.get(`/assignments/${assignmentId}`);
       setAssignment(response.data);
+      setStartTime(new Date());
     } catch (err) {
       setError("Gagal memuat kuis atau kuis tidak ditemukan.");
       console.error(err);
@@ -65,69 +67,81 @@ export default function AssignmentPage() {
   }, [assignmentId]);
 
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+  fetchData();
+}, [fetchData]);
 
   const handleOptionChange = (questionId: number, optionId: number) => {
     setAnswers(prev => ({ ...prev, [questionId]: optionId }));
   };
   
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-    if (!assignment) return;
+   const handleSubmit = useCallback(async (isAutoSubmit: boolean = false) => {
+      console.log("Nilai startTime saat submit:", startTime); 
 
-    // Bagian validasi Anda sudah benar
-    if (assignment.type === 'pilgan') {
-        const totalQuestions = assignment.questions.length || 0;
-        const answeredQuestions = Object.keys(answers).length;
-        if (answeredQuestions < totalQuestions) {
-            toast.error('Harap jawab semua pertanyaan sebelum mengumpulkan.');
-            return;
-        }
-    } else if (assignment.type === 'esai' && !essayAnswer.trim()) {
-        toast.error('Harap isi jawaban esai Anda.');
-        return;
-    }
+     if (!assignment || isSubmitting || !startTime) {
+    console.error("Submit dibatalkan karena kondisi tidak terpenuhi.");
+    return;
+  }
 
-    if (window.confirm('Apakah Anda yakin ingin mengumpulkan jawaban Anda?')) {
+    const proceed = isAutoSubmit || window.confirm('Apakah Anda yakin ingin mengumpulkan jawaban Anda?');
+    
+    if (proceed) {
         setIsSubmitting(true);
-        const payload = assignment.type === 'esai' 
-            ? { essayAnswer } 
-            : { answers };
-        
-        // Ambil classId dengan aman sebelum masuk ke blok try-catch
-        const classId = assignment.topic?.class?.id;
+        const toastId = toast.loading("Mengumpulkan jawaban...");
+
+        // (Perbaikan Tambahan): Mengirim data yang lebih lengkap ke server.
+        const endTime = new Date();
+        const timeTakenMs = endTime.getTime() - startTime.getTime();
+        const payload = {
+            startedOn: startTime.toISOString(),
+            timeTakenMs: timeTakenMs,
+            ...(assignment.type === 'esai' ? { essayAnswer } : { answers })
+        };
 
         try {
             const response = await apiClient.post(`/submissions/assignment/${assignmentId}`, payload);
-            toast.success(response.data.message || "Jawaban berhasil dikumpulkan!");
             
-            // --- PERBAIKAN UTAMA DI SINI ---
-            // Gunakan variabel classId yang sudah aman untuk redirect.
-            // Ini mencegah error jika karena suatu hal data kelas tidak ada.
-            if (classId) {
-                router.push(`/kelas/${classId}`);
-            } else {
-                router.push('/dashboard'); // Arahkan ke dashboard sebagai fallback yang aman
-            }
+            toast.success(response.data.message || "Jawaban berhasil dikumpulkan!", { id: toastId });
+            
+            // =====================================================================
+            // === INTI PERBAIKAN UNTUK REDIRECT ADA DI 2 BARIS BERIKUT INI ===
+            // =====================================================================
 
+            // LANGKAH 1 (PERBAIKAN): Menangkap ID unik yang dikirim balik oleh server.
+            const submissionId = response.data.submission.id;
+            
+            // LANGKAH 2 (PERBAIKAN): Menggunakan ID untuk mengarahkan pengguna ke halaman review.
+            router.push(`/submission/${submissionId}/review`); // INI BENAR
+            
         } catch (error: any) {
-            toast.error(error.response?.data?.message || 'Gagal mengumpulkan jawaban.');
+            toast.error(error.response?.data?.message || 'Gagal mengumpulkan jawaban.', { id: toastId });
         } finally {
             setIsSubmitting(false);
         }
     }
+  }, [assignment, isSubmitting, essayAnswer, answers, assignmentId, router, startTime]);
+
+  // Handler untuk tombol, agar bisa menampilkan konfirmasi
+  const handleManualSubmit = (e: FormEvent) => {
+      e.preventDefault();
+      handleSubmit(false); // Panggil handleSubmit dengan isAutoSubmit = false
   };
 
   if (isLoading) return <div className="p-8 text-center text-lg">Memuat Kuis...</div>;
   if (error) return <div className="p-8 text-center text-red-500">{error}</div>;
   if (!assignment) return notFound();
 
-  // Variabel untuk verifikasi guru
-const isTeacher = user?.role === 'guru' && user?.id === assignment?.topic?.class?.teacher?.id;
+  const isTeacher = user?.role === 'guru' && user?.id === assignment?.topic?.class?.teacher?.id;
 
   return (
     <div className="container mx-auto p-4 md:p-8 text-gray-700">
+      {/* Tampilkan timer jika ini kuis berwaktu untuk siswa */}
+      {user?.role === 'siswa' && assignment.timeLimit && assignment.timeLimit > 0 && (
+          <QuizTimer 
+              initialMinutes={assignment.timeLimit}
+              onTimeUp={() => handleSubmit(true)} // Panggil handleSubmit otomatis saat waktu habis
+          />
+      )}
+
       {/* Header Halaman */}
       <div className="bg-white p-6 rounded-lg shadow-md mb-6 border-l-4 text-gray-800 border-blue-600">
         <div className="flex justify-between items-center flex-wrap gap-4">
@@ -135,7 +149,6 @@ const isTeacher = user?.role === 'guru' && user?.id === assignment?.topic?.class
             <h1 className="text-3xl font-bold">{assignment.title}</h1>
             <p className="text-gray-600 mt-2">{assignment.description}</p>
           </div>
-          {/* Tombol ini HANYA untuk guru */}
           {isTeacher && (
             <Link href={`/tugas/${assignment.id}/submissions`} className="bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-700 whitespace-nowrap">
               Lihat Pengumpulan
@@ -147,10 +160,9 @@ const isTeacher = user?.role === 'guru' && user?.id === assignment?.topic?.class
         )}
       </div>
 
-      {/* --- PERBAIKAN DI SINI --- */}
       {/* Tampilkan form pengerjaan HANYA untuk siswa */}
       {user?.role === 'siswa' && (
-        <form onSubmit={handleSubmit} className="bg-white p-6 rounded-lg  text-gray-800 shadow-md">
+        <form onSubmit={handleManualSubmit} className="bg-white p-6 rounded-lg text-gray-800 shadow-md">
           <h2 className="text-xl font-semibold mb-6 border-b pb-3">Soal</h2>
           
           {/* Tampilan soal berdasarkan tipe */}

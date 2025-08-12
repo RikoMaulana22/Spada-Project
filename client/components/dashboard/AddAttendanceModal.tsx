@@ -64,6 +64,7 @@ export default function AddAttendanceModal({ isOpen, onClose, topicId, onAttenda
   };
 
   return (
+    <div className='text-gray-800'>
     <Modal isOpen={isOpen} onClose={handleClose} title="Atur Sesi Kehadiran">
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
@@ -89,5 +90,6 @@ export default function AddAttendanceModal({ isOpen, onClose, topicId, onAttenda
         </div>
       </form>
     </Modal>
+    </div>
   );
 }

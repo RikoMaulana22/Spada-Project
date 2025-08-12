@@ -40,12 +40,12 @@ export default function GradeReportPage() {
             <div className="bg-white p-6 rounded-lg shadow-md overflow-x-auto">
                 <table className="w-full text-left text-sm">
                     <thead className="border-b bg-gray-50">
-                        <tr>
-                            <th className="py-3 px-4">Nama Kelas</th>
-                            <th className="py-3 px-4">Tugas / Kuis</th>
-                            <th className="py-3 px-4">Guru</th>
-                            <th className="py-3 px-4 text-center">Pengumpulan</th>
-                            <th className="py-3 px-4 text-center">Rata-rata Nilai</th>
+                        <tr className='bg-yellow-200 text-gray-700 border font-bold font-large text-left text-l uppercase'>
+                            <th className="py-3 px-4 border border-gray-300">Nama Kelas</th>
+                            <th className="py-3 px-4 border border-gray-300">Tugas / Kuis</th>
+                            <th className="py-3 px-4 border border-gray-300">Guru</th>
+                            <th className="py-3 px-4 border border-gray-300 text-center">Pengumpulan</th>
+                            <th className="py-3 px-4 border border-gray-300 text-center">Rata-rata Nilai</th>
                         </tr>
                     </thead>
                     <tbody>

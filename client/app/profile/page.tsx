@@ -5,7 +5,8 @@ import { useState, FormEvent, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import apiClient from '@/lib/axios';
 import toast from 'react-hot-toast';
-import { FaUserEdit, FaLock } from 'react-icons/fa';
+import { FaUserEdit, FaLock, FaChevronLeft } from 'react-icons/fa';
+import Link from 'next/link';
 
 export default function ProfilePage() {
   const { user, revalidateUser } = useAuth(); // Ambil fungsi revalidateUser dari context
@@ -75,6 +76,10 @@ export default function ProfilePage() {
 
   return (
     <div className="space-y-12 text-gray-800 p-8">
+      <Link href="/dashboard" className="inline-flex items-center gap-2 text-gray-600 hover:text-blue-700 font-semibold hover:underline">
+                <FaChevronLeft />
+                <span>Kembali ke Dashboard</span>
+            </Link>
       <h1 className="text-3xl font-bold text-gray-800">Profil Saya</h1>
 
       {/* Form Update Profil */}

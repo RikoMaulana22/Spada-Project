@@ -50,7 +50,6 @@ export default function TeacherDashboard({ user }: { user: User }) {
   const handleEditClass = (classId: string) => {
     console.log('Edit kelas dengan ID:', classId);
     // TODO: Implementasi modal edit atau redirect ke halaman edit
-    // Misal redirect: router.push(`/kelas/edit/${classId}`);
   };
 
   const handleDeleteClass = async (classId: string) => {
@@ -65,6 +64,8 @@ export default function TeacherDashboard({ user }: { user: User }) {
       alert('Gagal menghapus kelas. Silakan coba lagi.');
     }
   };
+
+  const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
 
   return (
     <>
@@ -97,32 +98,31 @@ export default function TeacherDashboard({ user }: { user: User }) {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {myClasses.length > 0 ? (
                 myClasses.map((cls) => (
-                  <div
-                    key={cls.id}
-                    className="border p-4 rounded-lg hover:shadow-lg transition-all h-full relative"
-                  >
-                    <Link href={`/kelas/${cls.id}`}>
-                      <div className="cursor-pointer">
-                        <h3 className="font-bold text-lg text-gray-800">{cls.name}</h3>
+                  // --- PERBAIKAN STRUKTUR KARTU DIMULAI DI SINI ---
+                  <div key={cls.id} className="border rounded-lg overflow-hidden hover:shadow-lg transition-all flex flex-col">
+                    {/* Bagian Gambar (tidak lagi di dalam Link) */}
+                    <div className="h-32 bg-gray-200 flex items-center justify-center">
+                       {cls.imageUrl ? (
+                         <img src={`${backendUrl}${cls.imageUrl}`} alt={cls.name} className="h-full w-full object-cover"/>
+                       ) : (
+                         <span className="text-gray-400 text-sm">Tidak Ada Gambar</span>
+                       )}
+                    </div>
+                    {/* Bagian Teks */}
+                    <div className="p-4 flex flex-col justify-between flex-grow">
+                      <div>
+                        {/* Link hanya membungkus judul */}
+                        <Link href={`/kelas/${cls.id}`}>
+                          <h3 className="font-bold text-lg text-gray-800 hover:text-blue-600 hover:underline cursor-pointer">{cls.name}</h3>
+                        </Link>
                         <p className="text-sm text-gray-500">{cls.subject.name}</p>
-                        <p className="text-sm mt-4 font-semibold text-gray-700">
-                          {cls._count.members} Siswa
-                        </p>
+                        <p className="text-sm mt-2 font-semibold text-gray-700">{cls._count.members} Siswa</p>
                       </div>
-                    </Link>
-                    <div className="flex gap-4 mt-4">
-                      <button
-                        onClick={() => handleEditClass(cls.id.toString())}
-                        className="text-blue-600 hover:underline text-sm"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => handleDeleteClass(cls.id.toString())}
-                        className="text-red-600 hover:underline text-sm"
-                      >
-                        Hapus
-                      </button>
+                    </div>
+                    {/* Bagian Tombol Edit/Hapus (tidak lagi di dalam Link) */}
+                    <div className="p-4 border-t flex gap-4">
+                      <button onClick={() => handleEditClass(cls.id.toString())} className="text-blue-600 hover:underline text-sm">Edit</button>
+                      <button onClick={() => handleDeleteClass(cls.id.toString())} className="text-red-600 hover:underline text-sm">Hapus</button>
                     </div>
                   </div>
                 ))

@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getHomeroomDashboard, addHomeroomNote,getStudentDetailsForHomeroom,updateStudentAttendance,updateStudentGrade} from '../controllers/homeroom.controller';
+import { getHomeroomDashboard, addHomeroomNote,getStudentDetailsForHomeroom,deleteStudentAttendance,updateStudentAttendance,updateStudentGrade} from '../controllers/homeroom.controller';
 import { authenticate } from '../middlewares/auth.middleware';
 import { checkRole } from '../middlewares/role.middleware';
 
@@ -17,6 +17,7 @@ router.get('/student/:studentId', authenticate, checkRole(['guru', 'wali_kelas']
 router.put('/attendance/:attendanceId', authenticate, checkRole(['guru', 'wali_kelas']), updateStudentAttendance);
 // Rute untuk memperbarui nilai siswa
 router.put('/grades/:gradeId', authenticate, checkRole(['guru', 'wali_kelas']), updateStudentGrade);
+router.delete('/attendance/:attendanceId', deleteStudentAttendance);
 
 
 export default router;

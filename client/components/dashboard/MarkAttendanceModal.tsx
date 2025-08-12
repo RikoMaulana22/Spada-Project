@@ -56,6 +56,7 @@ export default function MarkAttendanceModal({ isOpen, onClose, onSuccess, attend
     };
 
     return (
+        <div className='text-gray-800'>
         <Modal isOpen={isOpen} onClose={onClose} title="Konfirmasi Kehadiran">
             <form onSubmit={handleSubmit} className="space-y-4 text-gray-800">
                 <div>
@@ -68,6 +69,7 @@ export default function MarkAttendanceModal({ isOpen, onClose, onSuccess, attend
                         <option value="HADIR">Hadir</option>
                         <option value="SAKIT">Sakit</option>
                         <option value="IZIN">Izin</option>
+                        <option value="ALFA">Alfa</option>
                     </select>
                 </div>
                 {(status === 'SAKIT' || status === 'IZIN') && (
@@ -95,5 +97,6 @@ export default function MarkAttendanceModal({ isOpen, onClose, onSuccess, attend
                 </div>
             </form>
         </Modal>
+        </div>
     );
 }

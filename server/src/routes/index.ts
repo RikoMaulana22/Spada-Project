@@ -34,6 +34,7 @@ mainRouter.use('/auth', authRoutes);
 mainRouter.use('/classes', authenticate, classRoutes);
 mainRouter.use('/subjects', authenticate, subjectRoutes);
 mainRouter.use('/assignments', authenticate, assignmentRoutes);
+
 mainRouter.use('/materials', authenticate, materialRoutes); // <-- 2. TAMBAHKAN PENGGUNAAN RUTE INI
 
 // --- RUTE BARU KHUSUS ADMIN ---
@@ -48,6 +49,8 @@ mainRouter.use('/settings', settingRoutes);
 mainRouter.use('/auth', authRoutes);
 // Rute Wali Kelas
 mainRouter.use('/homeroom', homeroomRoutes);
+
+
 
 
 

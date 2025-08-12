@@ -117,6 +117,7 @@ model Class {
   id                Int             @id @default(autoincrement())
   name              String
   description       String?
+  imageUrl          String? 
   createdAt         DateTime        @default(now())
   
   teacher           User            @relation("TeacherClasses", fields: [teacherId], references: [id])
@@ -205,8 +206,10 @@ model DailyAttendance {
 
   recordedBy   User                @relation("RecorderDailyAttendance", fields: [recordedById], references: [id], onDelete: Cascade)
   recordedById Int
+  proofUrl  String?  // Opsional
 
-  @@unique([date, studentId])
+
+  @@unique([date, studentId, classId])
 }
 
 model AttendanceRecord {
@@ -289,6 +292,7 @@ model Option {
   id         Int     @id @default(autoincrement())
   optionText String
   isCorrect  Boolean @default(false)
+  explanation  String?
   
   question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
   questionId Int
@@ -306,8 +310,15 @@ model Submission {
   
   assignment      Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
   assignmentId    Int
+
+  updatedAt       DateTime @updatedAt // <-- TAMBAHKAN BARIS INI
   
   selectedOptions Json?
+  startedOn     DateTime? // Kapan siswa mulai mengerjakan
+  completedOn   DateTime? // Kapan siswa selesai (mengklik tombol kumpul)
+  timeTakenMs   Int?     // Waktu pengerjaan dalam milidetik
+
+  @@unique([studentId, assignmentId]) // Opsional, tapi disarankan agar 1 siswa hanya bisa submit 1 kali per tugas
 }
 
 model Schedule {

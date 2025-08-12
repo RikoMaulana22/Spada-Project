@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { PrismaClient, Role } from '@prisma/client';
+import { PrismaClient, Prisma , Role } from '@prisma/client';
 import { AuthRequest } from '../middlewares/auth.middleware';
 import bcrypt from 'bcrypt';
 import Papa from 'papaparse'; // Impor papaparse
@@ -28,29 +28,57 @@ export const getUsers = async (req: AuthRequest, res: Response, next: NextFuncti
 };
 
 // --- TAMBAHKAN FUNGSI BARU DI SINI ---
+
 export const bulkCreateUsers = async (req: Request, res: Response) => {
     if (!req.file) {
         return res.status(400).json({ message: 'File CSV tidak ditemukan.' });
     }
 
-    // Ambil peran yang dipilih dari body permintaan
+
     const { role } = req.body;
-    // Tambahkan 'wali_kelas' sebagai peran yang valid
-    if (!role || !['guru', 'siswa', 'wali_kelas'].includes(role)) {
+    if (!['guru', 'siswa', 'wali_kelas'].includes(role)) {
         return res.status(400).json({ message: 'Peran (role) yang dipilih tidak valid.' });
     }
 
     const filePath = req.file.path;
-    const fileContent = fs.readFileSync(filePath, 'utf8');
 
+    
     try {
-        const usersToCreate: any[] = [];
-        
-        Papa.parse(fileContent, {
-            header: true,
-            skipEmptyLines: true,
-            step: async (result) => {
-                const row = result.data as any;
+        const fileContent = fs.readFileSync(filePath, 'utf8');
+
+        // --- PERBAIKAN 1: PROSES PARSING DIJADIKAN PROMISE AGAR BISA DI-AWAIT ---
+        const usersToProcess = await new Promise<any[]>((resolve, reject) => {
+            const users: any[] = [];
+            Papa.parse(fileContent, {
+                header: true,
+                skipEmptyLines: true,
+                step: (result) => {
+                    const row = result.data as any;
+
+                    // --- PERBAIKAN 2: VALIDASI DATA PER BARIS ---
+                    if (!row.username || !row.password || !row.fullName || !row.email) {
+                        // Jika ada data penting yang kosong, lewati baris ini dan beri peringatan
+                        console.warn('[CSV Import] Melewatkan baris karena data tidak lengkap:', row);
+                        return;
+                    }
+                    users.push(row);
+                },
+                complete: () => {
+                    resolve(users);
+                },
+                error: (error: any) => {
+                    reject(error);
+                }
+            });
+        });
+
+        if (usersToProcess.length === 0) {
+            return res.status(400).json({ message: 'Tidak ada data valid yang dapat diproses dari file CSV.' });
+        }
+
+        // --- PERBAIKAN 3: PROSES DATABASE DIPISAHKAN DARI PARSING ---
+        await prisma.$transaction(async (tx) => {
+            for (const row of usersToProcess) {
                 const hashedPassword = await bcrypt.hash(row.password, 10);
                 
                 const userData: any = {
@@ -60,51 +88,45 @@ export const bulkCreateUsers = async (req: Request, res: Response) => {
                     password: hashedPassword,
                     role: role,
                 };
-                
+
                 if (role === 'siswa') {
                     userData.nisn = row.nisn || null;
                 }
                 
-                // Jika wali kelas, kita perlu classId dari CSV
-                if (role === 'wali_kelas') {
-                    userData.homeroomClassId = parseInt(row.homeroomClassId); 
-                }
+                const newUser = await tx.user.create({
+                    data: userData
+                });
 
-                usersToCreate.push(userData);
-            },
-            complete: async () => {
-                try {
-                    // Gunakan transaksi untuk membuat user dan menugaskan wali kelas
-                    await prisma.$transaction(async (tx) => {
-                        for (const userData of usersToCreate) {
-                            const { homeroomClassId, ...restOfUserData } = userData;
-
-                            const newUser = await tx.user.create({
-                                data: restOfUserData
-                            });
-
-                            if (userData.role === 'wali_kelas' && homeroomClassId) {
-                                await tx.class.update({
-                                    where: { id: homeroomClassId },
-                                    data: { homeroomTeacherId: newUser.id }
-                                });
-                            }
-                        }
+                if (role === 'wali_kelas' && row.homeroomClassId) {
+                    await tx.class.update({
+                        where: { id: parseInt(row.homeroomClassId) },
+                        data: { homeroomTeacherId: newUser.id }
                     });
-                    
-                    fs.unlinkSync(filePath);
-                    res.status(201).json({ message: `${usersToCreate.length} akun ${role} berhasil dibuat.` });
-
-                } catch (dbError) {
-                    fs.unlinkSync(filePath);
-                    res.status(500).json({ message: 'Gagal menyimpan data. Pastikan tidak ada duplikasi dan classId valid.' });
                 }
             }
         });
 
-    } catch (error) {
+        res.status(201).json({ message: `${usersToProcess.length} akun ${role} berhasil dibuat.` });
+
+    } catch (error: any) {
+        // --- PERBAIKAN 4: ERROR HANDLING YANG LEBIH BAIK ---
+        let errorMessage = 'Gagal memproses permintaan Anda.';
+        // Tangani error duplikasi dari Prisma
+        if (error.code === 'P2002') {
+            const fields = error.meta?.target.join(', ');
+            errorMessage = `Gagal menyimpan data. Terdapat duplikasi pada kolom: ${fields}. Pastikan username dan email unik.`;
+        } else if (error.message) {
+            // Tangani error lain, misalnya dari parsing atau validasi
+            errorMessage = error.message;
+        }
+        
+        console.error("[Bulk Create Error]", error);
+        res.status(500).json({ message: errorMessage });
+
+    } finally {
+        // --- PERBAIKAN 5: PASTIKAN FILE SELALU DIHAPUS ---
+        // Selalu hapus file sementara baik proses berhasil maupun gagal
         fs.unlinkSync(filePath);
-        res.status(500).json({ message: 'Gagal memproses file CSV.' });
     }
 };
 
@@ -274,6 +296,43 @@ export const updateUser = async (req: AuthRequest, res: Response): Promise<void>
     }
 };
 
+export const deleteClass = async (req: Request, res: Response) => {
+    const { id } = req.params;
+
+    try {
+        // Pengecekan opsional tapi sangat direkomendasikan:
+        // Cek apakah kelas masih memiliki siswa sebelum menghapus.
+        const classToDelete = await prisma.class.findUnique({
+            where: { id: Number(id) },
+            include: {
+                _count: {
+                    select: { members: true }
+                }
+            }
+        });
+
+        if (classToDelete && classToDelete._count.members > 0) {
+            return res.status(400).json({ 
+                message: `Gagal menghapus: Kelas masih memiliki ${classToDelete._count.members} siswa terdaftar.` 
+            });
+        }
+
+        // Jika tidak ada siswa, lanjutkan penghapusan
+        await prisma.class.delete({
+            where: { id: Number(id) },
+        });
+
+        res.status(200).json({ message: 'Kelas berhasil dihapus' });
+    } catch (error) {
+        console.error('Gagal menghapus kelas:', error);
+        // Tangani error jika kelas tidak ditemukan
+        if (typeof error === 'object' && error !== null && 'code' in error && (error as any).code === 'P2025') {
+            return res.status(404).json({ message: 'Kelas tidak ditemukan.' });
+        }
+        res.status(500).json({ message: 'Gagal menghapus kelas karena kesalahan server.' });
+    }
+};
+
 // --- FUNGSI DELETE BARU DENGAN PENGECEKAN ---
 export const deleteUser = async (req: AuthRequest, res: Response): Promise<void> => {
     const { id } = req.params;
@@ -368,9 +427,23 @@ export const getAvailableClassesForHomeroom = async (req: AuthRequest, res: Resp
 // --- FUNGSI BARU: Mengambil semua kelas untuk panel admin ---
 export const getAllClasses = async (req: Request, res: Response) => {
     try {
+        // 1. Ambil parameter 'grade' dari query URL
+        const { grade } = req.query;
+
+        // 2. Siapkan klausa 'where' untuk Prisma
+        const whereClause: Prisma.ClassWhereInput = {};
+
+        // 3. Jika ada parameter 'grade', tambahkan kondisi filter
+        if (grade && typeof grade === 'string') {
+            whereClause.subject = {
+                grade: parseInt(grade, 10)
+            };
+        }
+
         const classes = await prisma.class.findMany({
+            where: whereClause, // 4. Gunakan klausa 'where' yang dinamis
             include: {
-                subject: { select: { name: true } },
+                subject: { select: { name: true, grade: true } }, // Sertakan grade untuk verifikasi
                 teacher: { select: { fullName: true } },
                 homeroomTeacher: { select: { fullName: true } }
             },
@@ -378,9 +451,11 @@ export const getAllClasses = async (req: Request, res: Response) => {
         });
         res.json(classes);
     } catch (error) {
+        console.error("Gagal mengambil data kelas untuk admin:", error);
         res.status(500).json({ message: "Gagal mengambil data kelas." });
     }
 };
+
 
 // Mengambil semua user dengan peran 'guru' atau 'wali_kelas'
 export const getAllTeachers = async (req: Request, res: Response) => {
@@ -454,10 +529,11 @@ export const assignHomeroomTeacher = async (req: AuthRequest, res: Response) => 
     try {
         // Validasi: Pastikan user yang dipilih adalah seorang guru
         const teacher = await prisma.user.findFirst({
-            where: { id: Number(teacherId), role: 'guru' }
+            where: { id: Number(teacherId), role: 'wali_kelas' }
         });
+        
         if (!teacher) {
-            return res.status(404).json({ message: "Guru tidak ditemukan atau ID tidak valid." });
+            return res.status(404).json({ message: "Wali Kelas tidak ditemukan atau ID tidak valid." });
         }
 
         const updatedClass = await prisma.class.update({
@@ -477,6 +553,7 @@ export const assignHomeroomTeacher = async (req: AuthRequest, res: Response) => 
 export const getClassEnrollments = async (req: Request, res: Response) => {
     const { classId } = req.params;
     try {
+        // 1. Ambil detail kelas yang sedang di-edit, termasuk wali kelas saat ini
         const targetClass = await prisma.class.findUnique({
             where: { id: parseInt(classId) },
             include: {
@@ -484,29 +561,84 @@ export const getClassEnrollments = async (req: Request, res: Response) => {
                     include: {
                         user: { select: { id: true, fullName: true, nisn: true } }
                     }
-                }
+                },
+                homeroomTeacher: { // Ambil data wali kelas saat ini
+                    select: { id: true, fullName: true }
+                } 
             }
         });
 
-        // Ambil juga daftar semua siswa yang BELUM terdaftar di kelas ini
-        const enrolledStudentIds = targetClass?.members.map(m => m.studentId) || [];
+        if (!targetClass) {
+            return res.status(404).json({ message: "Kelas tidak ditemukan." });
+        }
+
+        // 2. Ambil daftar siswa yang BELUM terdaftar di kelas ini
+        const enrolledStudentIds = targetClass.members.map(m => m.studentId);
         const availableStudents = await prisma.user.findMany({
             where: {
                 role: 'siswa',
-                id: { notIn: enrolledStudentIds } // Filter siswa yang belum masuk kelas
+                id: { notIn: enrolledStudentIds }
             },
             select: { id: true, fullName: true }
         });
 
+        // 3. LOGIKA BARU: Ambil daftar guru yang tersedia untuk menjadi wali kelas
+        // Ambil semua ID guru yang sudah menjadi wali kelas di kelas LAIN
+        const assignedHomeroomTeacherIds = (await prisma.class.findMany({
+            where: {
+                homeroomTeacherId: { not: null },
+                // Kecualikan kelas yang sedang kita edit, agar wali kelas saat ini tetap muncul di daftar
+                id: { not: parseInt(classId) } 
+            },
+            select: { homeroomTeacherId: true }
+        })).map(c => c.homeroomTeacherId as number);
+
+        // Ambil semua pengguna dengan peran 'wali_kelas' yang TIDAK ada di daftar di atas
+        const availableTeachers = await prisma.user.findMany({
+            where: {
+                role: 'wali_kelas',
+                
+            },
+            select: { id: true, fullName: true },
+            orderBy: { fullName: 'asc' } // Opsional: urutkan berdasarkan nama
+        });
+
+        // 4. Kirim semua data yang dibutuhkan dalam satu respons
         res.json({
             classDetails: targetClass,
-            availableStudents: availableStudents
+            availableStudents: availableStudents,
+            availableTeachers: availableTeachers // <-- Kirim daftar guru ke frontend
         });
 
     } catch (error) {
+        console.error("Gagal mengambil data pendaftaran:", error);
         res.status(500).json({ message: 'Gagal mengambil data pendaftaran.' });
     }
 };
+
+export const testGetAllWaliKelas = async (req: Request, res: Response) => {
+    console.log("--- MENJALANKAN TES: Mencari semua user dengan role 'wali_kelas' ---");
+    try {
+        const allWaliKelas = await prisma.user.findMany({
+            where: {
+                role: 'wali_kelas' // Hanya mencari berdasarkan peran, tanpa filter lain
+            }
+        });
+        console.log("--- HASIL TES ---");
+        console.log(allWaliKelas);
+        
+        // Kirim hasilnya langsung ke browser
+        res.status(200).json({
+            message: "Hasil tes pencarian 'wali_kelas'. Cek terminal backend Anda untuk detail.",
+            count: allWaliKelas.length,
+            data: allWaliKelas
+        });
+
+    } catch (error) {
+        res.status(500).json({ message: 'Tes gagal', error });
+    }
+};
+
 
 // Mendaftarkan siswa ke kelas
 export const enrollStudent = async (req: Request, res: Response) => {

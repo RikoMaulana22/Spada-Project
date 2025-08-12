@@ -104,51 +104,88 @@ export const getAttendanceDetails = async (req: AuthRequest, res: Response): Pro
 // ==========================
 // 📌 Catat Kehadiran Siswa
 // ==========================
+// --- GANTIKAN SELURUH FUNGSI INI DENGAN VERSI BARU ---
 export const markAttendanceRecord = async (req: AuthRequest, res: Response) => {
-  const { id: attendanceId } = req.params;
-  const studentId = req.user?.userId;
-  const { status, notes } = req.body;
+    const { id: attendanceId } = req.params;
+    const studentId = req.user?.userId;
+    const { status, notes } = req.body;
+    const proofFile = req.file;
 
-  if (!studentId) {
-    return res.status(401).json({ message: 'Otentikasi diperlukan.' });
-  }
-
-  if (!status) {
-    return res.status(400).json({ message: 'Status kehadiran wajib diisi.' });
-  }
-
-  try {
-    const attendanceSession = await prisma.attendance.findUnique({
-      where: { id: parseInt(attendanceId) }
-    });
-
-    if (!attendanceSession) {
-      return res.status(404).json({ message: 'Sesi absensi tidak ditemukan.' });
+    if (!studentId) {
+        return res.status(401).json({ message: 'Otentikasi diperlukan.' });
+    }
+    if (!status) {
+        return res.status(400).json({ message: 'Status kehadiran wajib diisi.' });
     }
 
-    const now = new Date();
-    if (now < attendanceSession.openTime || now > attendanceSession.closeTime) {
-      return res.status(403).json({ message: 'Sesi absensi tidak sedang dibuka.' });
+    try {
+        const attendanceSession = await prisma.attendance.findUnique({
+            where: { id: parseInt(attendanceId) },
+            include: { topic: { select: { classId: true } } }
+        });
+
+        if (!attendanceSession) {
+            return res.status(404).json({ message: 'Sesi absensi tidak ditemukan.' });
+        }
+        
+        const now = new Date();
+        const todayStart = new Date();
+        todayStart.setHours(0, 0, 0, 0);
+        const todayEnd = new Date();
+        todayEnd.setHours(23, 59, 59, 999);
+
+        const existingRecord = await prisma.dailyAttendance.findFirst({
+            where: {
+                studentId: studentId,
+                classId: attendanceSession.topic.classId,
+                date: {
+                    gte: todayStart,
+                    lt: todayEnd
+                }
+            }
+            
+        });
+
+        if (existingRecord) {
+            return res.status(409).json({ message: 'Anda sudah mencatat kehadiran untuk kelas ini hari ini.' });
+        }
+
+        // --- PERBAIKAN UTAMA: GUNAKAN `UPSERT` BUKAN `CREATE` ---
+
+        // Data yang akan di-create atau di-update
+        const dataForUpsert = {
+            date: todayStart, // Gunakan awal hari agar tanggalnya selalu sama untuk hari yang sama
+            status,
+            notes: notes || null,
+            proofUrl: proofFile ? proofFile.path.replace('public', '').replace(/\\/g, '/') : null,
+            student: { connect: { id: studentId } },
+            class: { connect: { id: attendanceSession.topic.classId } },
+            recordedBy: { connect: { id: studentId } }
+        };
+
+        const record = await prisma.dailyAttendance.upsert({
+             where: {
+                // Cari record berdasarkan kombinasi unik yang baru
+                date_studentId_classId: {
+                    date: todayStart,
+                    studentId: studentId,
+                    classId: attendanceSession.topic.classId
+                }
+            },
+            update: {
+                status,
+                notes: notes || null,
+                proofUrl: proofFile ? proofFile.path.replace('public', '').replace(/\\/g, '/') : null,
+                recordedBy: { connect: { id: studentId } } // Update juga siapa yang merekam
+            },
+           create: dataForUpsert
+        });
+
+        res.status(201).json({ message: 'Kehadiran berhasil dicatat!', record });
+
+    } catch (error: any) {
+        console.error("Gagal mencatat kehadiran:", error);
+        res.status(500).json({ message: 'Gagal mencatat kehadiran. Periksa log server.' });
     }
-
-    const proofUrl = req.file ? `/uploads/materials/${req.file.filename}` : undefined;
-
-    const newRecord = await prisma.attendanceRecord.create({
-      data: {
-        studentId,
-        attendanceId: parseInt(attendanceId),
-        status,
-        notes,
-        proofUrl,
-      },
-    });
-
-    res.status(201).json({ message: 'Kehadiran berhasil dicatat!', record: newRecord });
-  } catch (error: any) {
-    if (error.code === 'P2002') {
-      return res.status(409).json({ message: 'Anda sudah mencatat kehadiran untuk sesi ini.' });
-    }
-    console.error("Gagal mencatat kehadiran:", error);
-    res.status(500).json({ message: 'Gagal mencatat kehadiran.' });
-  }
 };
+

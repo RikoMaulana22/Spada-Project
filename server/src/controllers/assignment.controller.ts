@@ -12,7 +12,7 @@ interface CreateAssignmentBody {
     dueDate: string;
     questions?: {
         questionText: string;
-        options?: { optionText: string; isCorrect: boolean; }[];
+        options?: { optionText: string; isCorrect: boolean; explanation?: string; }[];
     }[];
     externalUrl?: string;
     startTime?: string;
@@ -21,6 +21,60 @@ interface CreateAssignmentBody {
     attemptLimit?: number;
     passingGrade?: number;
 }
+
+export const getSubmissionForReview = async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+        const { id } = req.params; // Ini adalah submissionId
+        const userId = req.user?.userId;
+
+        // Log untuk debugging
+        console.log(`[DEBUG] Mencari submission dengan ID: ${id}`);
+        console.log(`[DEBUG] User ID yang sedang login: ${userId}`);
+
+        const submission = await prisma.submission.findUnique({
+            where: { id: Number(id) },
+            // =======================================================
+            // == INI ADALAH QUERY PRISMA LENGKAPNYA ==
+            // =======================================================
+            include: {
+                assignment: {
+                    include: {
+                        questions: {
+                            orderBy: { id: 'asc' },
+                            include: {
+                                // `true` akan mengambil semua field dari tabel Option
+                                // termasuk id, optionText, isCorrect, dan explanation
+                                options: true 
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        if (!submission) {
+            console.log(`[DEBUG] Submission dengan ID ${id} tidak ditemukan di database.`);
+            res.status(404).json({ message: "Hasil pengerjaan tidak ditemukan." });
+            return;
+        }
+
+        console.log(`[DEBUG] Pemilik submission (studentId): ${submission.studentId}`);
+
+        if (submission.studentId !== userId) {
+            console.log(`[DEBUG] Akses ditolak karena userId (${userId}) tidak cocok dengan studentId (${submission.studentId}).`);
+            res.status(404).json({ message: "Hasil pengerjaan tidak ditemukan." });
+            return;
+        }
+
+        console.log('[DEBUG] Akses diberikan. Mengirim data submission.');
+        res.status(200).json(submission);
+
+    } catch (error) {
+        console.error("Gagal mengambil data review:", error);
+        res.status(500).json({ message: "Gagal mengambil data review." });
+    }
+};
+
 
 export const createAssignmentForTopic = async (req: AuthRequest, res: Response): Promise<void> => {
     const { topicId } = req.params;
@@ -98,6 +152,88 @@ export const createAssignmentForTopic = async (req: AuthRequest, res: Response):
     } catch (error) {
         console.error("GAGAL MEMBUAT TUGAS:", error); // Log error yang lebih jelas
         res.status(500).json({ message: "Terjadi kesalahan internal saat menyimpan tugas. Silakan cek log server." });
+    }
+};
+
+// GANTIKAN KEMBALI FUNGSI submitAssignment ANDA DENGAN VERSI LENGKAP INI
+
+export const submitAssignment = async (req: AuthRequest, res: Response) => {
+    try {
+        const { assignmentId } = req.params;
+        const studentId = req.user?.userId;
+        const { answers, essayAnswer, startedOn, timeTakenMs } = req.body;
+
+        if (!studentId) {
+            return res.status(401).json({ message: "Otentikasi gagal." });
+        }
+
+        const assignment = await prisma.assignment.findUnique({
+            where: { id: Number(assignmentId) },
+            include: { 
+                questions: { include: { options: { where: { isCorrect: true } } } },
+                topic: { select: { classId: true } } 
+            }
+        });
+
+        if (!assignment) {
+            return res.status(404).json({ message: "Tugas tidak ditemukan." });
+        }
+
+        // --- TAMBAHKAN PENGECEKAN NULL DI SINI ---
+        if (!assignment.topic || !assignment.topic.classId) {
+            // Menangani kasus jika tugas tidak terhubung ke topik atau kelas
+            console.error(`Data Error: Tugas dengan ID ${assignmentId} tidak terhubung ke topik atau kelas.`);
+            return res.status(400).json({ message: "Struktur data error: Tugas ini tidak terhubung ke kelas manapun." });
+        }
+        // --- AKHIR PENGECEKAN NULL ---
+
+        // Kode pengecekan pendaftaran sekarang aman karena kita sudah memastikan assignment.topic ada
+        const studentEnrollment = await prisma.class_Members.findUnique({
+            where: {
+                studentId_classId: {
+                    studentId: studentId,
+                    classId: assignment.topic.classId // <-- BARIS INI SEKARANG AMAN
+                }
+            }
+        });
+
+        if (!studentEnrollment) {
+            return res.status(403).json({ message: "Akses ditolak. Anda tidak terdaftar di kelas ini." });
+        }
+
+        // Logika perhitungan skor dan penyimpanan data (tidak ada perubahan)
+        let score = null;
+        if (assignment.type === 'pilgan' && answers) {
+            let correctCount = 0;
+            assignment.questions.forEach(q => {
+                if (answers[q.id] === q.options[0]?.id) {
+                    correctCount++;
+                }
+            });
+            score = (correctCount / assignment.questions.length) * 100;
+        }
+
+        const newSubmission = await prisma.submission.create({
+            data: {
+                studentId,
+                assignmentId: Number(assignmentId),
+                score,
+                essayAnswer: assignment.type === 'esai' ? essayAnswer : null,
+                selectedOptions: assignment.type === 'pilgan' ? answers : {},
+                startedOn: new Date(startedOn),
+                completedOn: new Date(),
+                timeTakenMs: Number(timeTakenMs),
+            }
+        });
+
+        res.status(201).json({
+            message: "Jawaban Anda berhasil dikumpulkan!",
+            submission: newSubmission
+        });
+
+    } catch (error) {
+        console.error("Gagal saat memproses pengumpulan tugas:", error);
+        res.status(500).json({ message: "Terjadi kesalahan saat memproses jawaban Anda." });
     }
 };
 

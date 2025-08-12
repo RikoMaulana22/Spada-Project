@@ -56,7 +56,7 @@ export default function Header() {
         <div className="flex items-center">
           <Link href="/" className="flex items-center">
             <Image
-              src="/lg_spada_satap.png"
+              src="/images/lg_spada_satap.png"
               alt="Logo SMP Negeri 1 Atap 1 Way Tenong"
               width={300}
               height={40}

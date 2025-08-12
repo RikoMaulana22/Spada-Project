@@ -5,6 +5,19 @@ import apiClient from '@/lib/axios';
 import toast from 'react-hot-toast';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import ViewTranscriptModal from '@/components/dashboard/ViewTranscriptModal';
+import AttendanceDetailModal from '@/components/dashboard/AttendanceDetailModal';
+
+// Modal untuk detail absensi harian siswa
+interface AttendanceDetailModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    student: Student | null;
+    allAttendances: DailyAttendance[];
+}
+
+
+
 
 // Definisikan tipe data
 interface Student { id: number; fullName: string; nisn: string; }
@@ -70,6 +83,18 @@ const handleAttendanceChange = async (attendanceId: number, newStatus: string) =
 
     if (!student) return null;
 
+    async function handleDeleteAttendance(id: number): Promise<void> {
+        if (!window.confirm('Apakah Anda yakin ingin menghapus catatan absensi ini?')) return;
+        try {
+            await apiClient.delete(`/homeroom/attendance/${id}`);
+            toast.success('Catatan absensi berhasil dihapus.');
+            fetchDetails(); // Refresh detail data in modal
+            onDataUpdated(); // Refresh main dashboard data
+        } catch (error) {
+            toast.error('Gagal menghapus catatan absensi.');
+        }
+    }
+
     return (
         <div className="fixed inset-0 bg-black bg-opacity-60 flex text-gray-600 justify-center items-center z-50 p-4">
             <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] flex flex-col">
@@ -113,6 +138,12 @@ const handleAttendanceChange = async (attendanceId: number, newStatus: string) =
                         <option value="IZIN">Izin</option>
                         <option value="ALPA">Alpa</option>
                     </select>
+                    <button
+                     onClick={() => handleDeleteAttendance(att.id)}
+                     className="text-red-600 hover:underline text-sm font-semibold"
+                     >
+                     Hapus
+                     </button>
                 </div>
             ))}
             {details?.dailyAttendances.length === 0 && <p className="text-sm text-gray-500">Belum ada catatan absensi.</p>}
@@ -138,9 +169,16 @@ export default function HomeroomDashboardPage() {
     const [activeTab, setActiveTab] = useState('manage');
     
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [isViewModalOpen, setIsViewModalOpen] = useState(false);
     const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
     const [noteContent, setNoteContent] = useState('');
     const [selectedStudentIdForNote, setSelectedStudentIdForNote] = useState<string>('');
+    const [isAttendanceDetailModalOpen, setIsAttendanceDetailModalOpen] = useState(false);
+
+const openAttendanceDetailModal = (student: Student) => {
+        setSelectedStudent(student);
+        setIsAttendanceDetailModalOpen(true);
+    };
 
     // --- HOOKS useMemo DIPINDAHKAN KE ATAS ---
     const students: Student[] = useMemo(() => 
@@ -149,37 +187,47 @@ export default function HomeroomDashboardPage() {
     );
 
     const attendanceRecap = useMemo(() => {
-        if (!dashboardData) return {};
-        const recap: Record<number, { HADIR: number, SAKIT: number, IZIN: number, ALPA: number }> = {};
-        students.forEach(student => {
-            recap[student.id] = { HADIR: 0, SAKIT: 0, IZIN: 0, ALPA: 0 };
-        });
-        dashboardData.dailyAttendances.forEach((rec: { studentId: number; status: string; }) => {
-            if (recap[rec.studentId] && rec.status in recap[rec.studentId]) {
-                recap[rec.studentId][rec.status as 'HADIR' | 'SAKIT' | 'IZIN' | 'ALPA']++;
-            }
-        });
-        return recap;
-    }, [dashboardData, students]);
+    if (!dashboardData || !Array.isArray(dashboardData.dailyAttendances)) {
+        return {}; // Jika data belum ada atau bukan array, kembalikan objek kosong
+    }
+
+    const recap: Record<number, { HADIR: number, SAKIT: number, IZIN: number, ALPA: number }> = {};
+    students.forEach(student => {
+        recap[student.id] = { HADIR: 0, SAKIT: 0, IZIN: 0, ALPA: 0 };
+    });
+
+    // Kode ini sekarang aman untuk dijalankan
+    dashboardData.dailyAttendances.forEach((rec: { studentId: number; status: string; }) => {
+        if (recap[rec.studentId] && rec.status in recap[rec.studentId]) {
+            recap[rec.studentId][rec.status as 'HADIR' | 'SAKIT' | 'IZIN' | 'ALPA']++;
+        }
+    });
+    return recap;
+}, [dashboardData, students]);
     // --- AKHIR PEMINDAHAN ---
 
     const fetchData = useCallback(async () => {
-        if (!dashboardData) setIsLoading(true);
+         setIsLoading(true);
         try {
             const response = await apiClient.get('/homeroom/dashboard');
             setDashboardData(response.data);
+            setError(null);
         } catch (err: any) {
             setError(err.response?.data?.message || 'Gagal memuat data.');
         } finally {
-            if (isLoading) setIsLoading(false);
+             setIsLoading(false);
         }
-    }, [dashboardData, isLoading]);
+    }, []);
 
     useEffect(() => { fetchData(); }, [fetchData]);
     
     const openEditModal = (student: Student) => {
         setSelectedStudent(student);
         setIsEditModalOpen(true);
+    };
+     const openViewModal = (student: Student) => {
+        setSelectedStudent(student);
+        setIsViewModalOpen(true);
     };
 
     const handleAddNote = async (e: React.FormEvent) => { /* ... (logika handleAddNote) ... */ };
@@ -188,10 +236,30 @@ export default function HomeroomDashboardPage() {
     if (isLoading) return <div className="p-8 text-center">Memuat Dashboard...</div>;
     if (error) return <div className="p-8 text-center text-red-500">{error}</div>;
 
+    async function handleDelete(id: number): Promise<void> {
+        if (!window.confirm('Apakah Anda yakin ingin menghapus data siswa ini?')) return;
+        try {
+            await apiClient.delete(`/homeroom/student/${id}`);
+            toast.success('Data siswa berhasil dihapus.');
+            fetchData(); // Refresh dashboard data
+        } catch (error) {
+            toast.error('Gagal menghapus data siswa.');
+        }
+    }
+
     return (
         <>
             {isEditModalOpen && <EditStudentDataModal student={selectedStudent} onClose={() => setIsEditModalOpen(false)} onDataUpdated={fetchData} />}
-            
+            {isViewModalOpen && <ViewTranscriptModal student={selectedStudent} className={dashboardData.name} onClose={() => setIsViewModalOpen(false)} />}
+
+            <AttendanceDetailModal 
+                isOpen={isAttendanceDetailModalOpen}
+                onClose={() => setIsAttendanceDetailModalOpen(false)}
+                student={selectedStudent}
+                allAttendances={dashboardData?.dailyAttendances || []}
+                className={dashboardData?.name || ''}
+            />
+
             <div className="container mx-auto p-4 md:p-8 text-gray-800">
                 <h1 className="text-3xl font-bold">Dashboard Wali Kelas</h1>
                 <h2 className="text-xl text-gray-600 mb-6">Kelas: {dashboardData.name}</h2>
@@ -253,34 +321,46 @@ export default function HomeroomDashboardPage() {
         </div>
     )}
     {activeTab === 'attendance' && (
-        <div className="bg-white p-4 rounded-lg text-gray-800 shadow">
-            <h3 className="text-lg font-semibold mb-4">Rekapitulasi Absensi Harian</h3>
-            <div className="overflow-x-auto">
-                <table className="min-w-full divide-y">
-                    <thead className="bg-gray-50">
-                        <tr>
-                            <th className="px-6 py-3 text-left text-xs font-medium uppercase">Nama Siswa</th>
-                            <th className="px-6 py-3 text-center text-xs font-medium uppercase text-green-600">Hadir</th>
-                            <th className="px-6 py-3 text-center text-xs font-medium uppercase text-yellow-600">Sakit</th>
-                            <th className="px-6 py-3 text-center text-xs font-medium uppercase text-blue-600">Izin</th>
-                            <th className="px-6 py-3 text-center text-xs font-medium uppercase text-red-600">Alpa</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y">
-                        {students.map((student) => (
-                            <tr key={student.id}>
-                                <td className="px-6 py-4 font-medium">{student.fullName}</td>
-                                <td className="px-6 py-4 text-center font-semibold">{attendanceRecap[student.id]?.HADIR || 0}</td>
-                                <td className="px-6 py-4 text-center font-semibold">{attendanceRecap[student.id]?.SAKIT || 0}</td>
-                                <td className="px-6 py-4 text-center font-semibold">{attendanceRecap[student.id]?.IZIN || 0}</td>
-                                <td className="px-6 py-4 text-center font-semibold">{attendanceRecap[student.id]?.ALPA || 0}</td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    )}
+                        <div className="bg-white p-4 rounded-lg text-gray-800 shadow">
+                            <h3 className="text-lg font-semibold mb-4">Rekapitulasi Absensi Harian</h3>
+                            <div className="overflow-x-auto">
+                                <table className="min-w-full divide-y">
+                                    <thead className="bg-gray-50">
+                                        <tr>
+                                            <th className="px-6 py-3 text-left text-xs font-medium uppercase">Nama Siswa</th>
+                                            <th className="px-6 py-3 text-center text-xs font-medium uppercase text-green-600">Hadir</th>
+                                            <th className="px-6 py-3 text-center text-xs font-medium uppercase text-yellow-600">Sakit</th>
+                                            <th className="px-6 py-3 text-center text-xs font-medium uppercase text-blue-600">Izin</th>
+                                            <th className="px-6 py-3 text-center text-xs font-medium uppercase text-red-600">Alpa</th>
+                                            {/* Tambah kolom Aksi */}
+                                            <th className="px-6 py-3 text-center text-xs font-medium uppercase">Aksi</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y">
+                                        {students.map((student) => (
+                                            <tr key={student.id}>
+                                                <td className="px-6 py-4 font-medium">{student.fullName}</td>
+                                                <td className="px-6 py-4 text-center font-semibold">{attendanceRecap[student.id]?.HADIR || 0}</td>
+                                                <td className="px-6 py-4 text-center font-semibold">{attendanceRecap[student.id]?.SAKIT || 0}</td>
+                                                <td className="px-6 py-4 text-center font-semibold">{attendanceRecap[student.id]?.IZIN || 0}</td>
+                                                <td className="px-6 py-4 text-center font-semibold">{attendanceRecap[student.id]?.ALPA || 0}</td>
+                                                {/* Tambah sel dengan tombol View */}
+                                                <td className="px-6 py-4 text-center space-x-4">
+                                                    <button 
+                                                        onClick={() => openAttendanceDetailModal(student)}
+                                                        className="text-blue-600 hover:underline font-semibold text-sm"
+                                                    >
+                                                        View
+                                                    </button>
+                                                    
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    )}
     {activeTab === 'grades' && (
         <div className="bg-white p-4 rounded-lg shadow text-gray-800">
             <h3 className="text-lg font-semibold mb-4">Cetak Transkrip Nilai Siswa</h3>
@@ -296,17 +376,32 @@ export default function HomeroomDashboardPage() {
                     <tbody className="divide-y">
                         {students.map((student) => (
                             <tr key={student.id}>
-                                <td className="px-6 py-4 font-medium">{student.fullName}</td>
-                                <td className="px-6 py-4 text-gray-500">{student.nisn || 'N/A'}</td>
-                                <td className="px-6 py-4 text-center">
-                                    <button
-                                        onClick={() => generateTranscriptPDF(student, dashboardData.gradeComponents, dashboardData.name)}
-                                        className="btn-secondary text-sm"
-                                    >
-                                        Cetak Transkrip
-                                    </button>
-                                </td>
-                            </tr>
+    <td className="px-6 py-4 font-medium">{student.fullName}</td>
+    <td className="px-6 py-4 text-gray-500">{student.nisn || 'N/A'}</td>
+    
+    {/* --- PERUBAHAN DI SINI --- */}
+    <td className="px-6 py-4 text-center">
+        {/* Gunakan flexbox untuk mengatur jarak tombol */}
+        <div className="flex items-center justify-center gap-x-5 ">
+            {/* Tombol View dengan warna hijau */}
+            <button
+             onClick={() => openViewModal(student)}
+                className="bg-green-600 hover:bg-green-700 text-white font-bold py-1 px-3 rounded text-sm"
+            >
+            View 
+            </button>
+            
+            {/* Tombol Cetak Transkrip
+            <button
+                onClick={() => generateTranscriptPDF(student, dashboardData.gradeComponents, dashboardData.name)}
+                className="btn-secondary text-sm"
+            >
+                Cetak Transkrip
+            </button> */}
+        </div>
+    </td>
+    {/* --- AKHIR PERUBAHAN --- */}
+</tr>
                         ))}
                     </tbody>
                 </table>

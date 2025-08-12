@@ -18,7 +18,9 @@ import { getUsers,
     getClassEnrollments,
     enrollStudent,
     unenrollStudent,
-    bulkCreateUsers
+    bulkCreateUsers,
+    deleteClass,
+    testGetAllWaliKelas
 
     
   } from '../controllers/admin.controller';
@@ -30,9 +32,13 @@ import { upload } from '../middlewares/upload.middleware'; // Impor middleware u
 const router = Router();
 
 // Semua rute di file ini akan memiliki prefix /api/admin
+router.get('/test/walikelas', testGetAllWaliKelas); 
 
 // GET /api/admin/users
 router.get('/users', authenticate, checkRole('admin'), getUsers);
+
+router.delete('/classes/:id', authenticate, checkRole('admin'), deleteClass);
+
 
 // POST /api/admin/users
 router.post('/users', authenticate, checkRole('admin'), createUser);
@@ -69,6 +75,9 @@ router.post('/classes/:classId/enrollments', authenticate, checkRole('admin'), e
 router.delete('/classes/:classId/enrollments/:studentId', authenticate, checkRole('admin'), unenrollStudent);
 
 router.post('/users/bulk', authenticate, checkRole('admin'), upload.single('file'), bulkCreateUsers);
+
+router.put('/classes/:classId/homeroom', assignHomeroomTeacher);
+
 
 
 

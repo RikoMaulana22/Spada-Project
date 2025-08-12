@@ -74,7 +74,7 @@ export default function ManageUsersPage() {
                     <h1 className="text-3xl text-gray-800 font-bold">Manajemen Pengguna</h1>
                     <Link 
                         href="/admin/users/import"
-                        className="btn-secondary whitespace-nowrap" // Gunakan style sekunder
+                        className="btn-secondary whitespace-nowrappx-4 py-2 bg-gray-600 text-white font-semibold rounded-lg hover:bg-blue-700" // Gunakan style sekunder
                     >
                         Impor Massal
                     </Link>
@@ -101,7 +101,7 @@ export default function ManageUsersPage() {
                 <div className="bg-white p-6 rounded-lg shadow-md overflow-x-auto">
     <table className="w-full text-left text-gray-800 border border-gray-300">
         <thead>
-            <tr className="border-b">
+            <tr className="bg-yellow-200 text-gray-700 border font-bold font-large text-left text-l uppercase">
                 <th className="py-2 px-3 border border-gray-300">Nama Lengkap</th>
                 <th className="py-2 px-3 border border-gray-300">Username</th>
                 <th className="py-2 px-3 border border-gray-300">Peran</th>

@@ -2,6 +2,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import apiClient from '@/lib/axios';
 import { FaChartBar, FaBook, FaChevronLeft } from 'react-icons/fa';
 
@@ -43,7 +44,7 @@ export default function GradesPage() {
 
         // --- PERUBAHAN 2: Pengelompokan Data ---
         const grouped = grades.reduce((acc, grade) => {
-          const subjectName = grade.assignment.topic.class.subject.name;
+          const subjectName = grade.assignment?.topic?.class?.subject?.name;
           if (!acc[subjectName]) {
             acc[subjectName] = [];
           }
@@ -74,6 +75,10 @@ export default function GradesPage() {
   // --- PERUBAHAN 3: Tampilan Kondisional ---
   return (
     <div className="space-y-8">
+      <Link href="/dashboard" className="inline-flex items-center gap-2 text-gray-600 hover:text-blue-700 font-semibold hover:underline">
+                <FaChevronLeft />
+                <span>Kembali ke Dashboard</span>
+            </Link>
       {/* Jika ada mata pelajaran yang dipilih, tampilkan tabel nilai */}
       {selectedSubject ? (
         <div>
@@ -101,7 +106,9 @@ export default function GradesPage() {
                   {groupedGrades[selectedSubject]?.map((grade) => (
                     <tr key={grade.id}>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-800">{grade.assignment.title}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{grade.assignment.topic.class.name}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">      
+                          {grade.assignment?.topic?.class?.name ?? 'Kelas Dihapus'}
+                      </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {new Date(grade.submissionDate).toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' })}
                       </td>

@@ -1,13 +1,28 @@
-import { Response, NextFunction } from 'express';
-import { PrismaClient } from '@prisma/client';
+import { Request, Response, NextFunction } from 'express';
+import { PrismaClient,Prisma  } from '@prisma/client';
 import { AuthRequest } from '../middlewares/auth.middleware';
 
 const prisma = new PrismaClient();
 
-export const getAllSubjects = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+export const getAllSubjects = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
+        // 1. Ambil parameter 'grade' dari query URL
+        const { grade } = req.query;
+
+        // 2. Siapkan klausa 'where' untuk Prisma
+        const whereClause: Prisma.SubjectWhereInput = {};
+
+        // 3. Jika ada parameter 'grade', tambahkan kondisi filter
+        if (grade && typeof grade === 'string') {
+            whereClause.grade = parseInt(grade, 10);
+        }
+
         const subjects = await prisma.subject.findMany({
-            orderBy: { name: 'asc' }
+            where: whereClause, // 4. Gunakan klausa 'where' yang dinamis
+            orderBy: [
+                { grade: 'asc' },
+                { name: 'asc' }
+            ]
         });
         res.status(200).json(subjects);
     } catch (error) {
@@ -15,6 +30,7 @@ export const getAllSubjects = async (req: AuthRequest, res: Response, next: Next
         res.status(500).json({ message: 'Gagal mengambil data mata pelajaran' });
     }
 };
+
 
 // Pastikan fungsi ini memiliki blok 'include' kembali
 export const getGroupedSubjects = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {

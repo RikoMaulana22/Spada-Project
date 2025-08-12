@@ -42,13 +42,13 @@ export default function AttendanceReportPage() {
             <div className="bg-white p-6 rounded-lg shadow-md overflow-x-auto">
                 <table className="w-full text-left text-sm">
                     <thead className="border-b bg-gray-50">
-                        <tr>
-                            <th className="py-3 px-4">Kelas</th>
-                            <th className="py-3 px-4">Topik / Sesi</th>
-                            <th className="py-3 px-4">Guru</th>
-                            <th className="py-3 px-4 text-center">Jumlah Hadir</th>
-                            <th className="py-3 px-4 text-center">Tingkat Kehadiran</th>
-                            <th className="py-3 px-4">Waktu Absensi</th>
+                        <tr className='bg-yellow-200 text-gray-700 border font-bold font-large text-left text-l uppercase'>
+                            <th className="py-3 px-4 border border-gray-300">Kelas</th>
+                            <th className="py-3 px-4 border border-gray-300">Topik / Sesi</th>
+                            <th className="py-3 px-4 border border-gray-300">Guru</th>
+                            <th className="py-3 px-4 border border-gray-300 text-center">Jumlah Hadir</th>
+                            <th className="py-3 px-4 border border-gray-300 text-center">Tingkat Kehadiran</th>
+                            <th className="py-3 px-4 border border-gray-300">Waktu Absensi</th>
                         </tr>
                     </thead>
                     <tbody>
