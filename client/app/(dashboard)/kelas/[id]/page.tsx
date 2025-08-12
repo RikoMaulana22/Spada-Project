@@ -20,36 +20,37 @@ import toast from 'react-hot-toast';
 
 // Define Data Types
 interface MaterialInfo {
-  id: number;
-  title: string;
-  fileUrl?: string | null;
-  youtubeUrl?: string | null;
+    id: number;
+    title: string;
+    fileUrl?: string | null;
+    youtubeUrl?: string | null;
 }
-interface AssignmentInfo { 
-    id: number; 
-    title: string; 
+interface AssignmentInfo {
+    id: number;
+    title: string;
     type: string;
-    dueDate: string; 
+    dueDate: string;
     attemptLimit: number;
     studentProgress: {
         attemptCount: number;
         highestScore?: number;
-    } | null;}
+    } | null;
+}
 interface AttendanceInfo { id: number; title: string; }
 interface TopicInfo {
-  id: number;
-  title: string;
-  order: number;
-  materials: MaterialInfo[];
-  assignments: AssignmentInfo[];
-  attendance?: AttendanceInfo | null;
+    id: number;
+    title: string;
+    order: number;
+    materials: MaterialInfo[];
+    assignments: AssignmentInfo[];
+    attendance?: AttendanceInfo | null;
 }
 interface ClassDetails {
-  id: number;
-  name: string;
-  isEnrolled: boolean;
-  teacherId: number;
-  topics: TopicInfo[];
+    id: number;
+    name: string;
+    isEnrolled: boolean;
+    teacherId: number;
+    topics: TopicInfo[];
 }
 
 export default function ClassDetailPage() {
@@ -64,7 +65,7 @@ export default function ClassDetailPage() {
     const [error, setError] = useState<string | null>(null);
     const [openTopics, setOpenTopics] = useState<Record<number, boolean>>({});
     const [isEditing, setIsEditing] = useState(false);
-    
+
     // State for all modals
     const [isTopicModalOpen, setIsTopicModalOpen] = useState(false);
     const [isActivityModalOpen, setIsActivityModalOpen] = useState(false);
@@ -104,13 +105,13 @@ export default function ClassDetailPage() {
         setSelectedTopicId(topicId);
         setIsActivityModalOpen(true);
     };
-    
+
     // Handler for TEACHER to open the modal to CREATE an attendance session
     const handleOpenAddAttendanceModal = () => {
         setIsActivityModalOpen(false);
         setIsAddAttendanceModalOpen(true);
     };
-    
+
     // Handler for STUDENT to open the modal to MARK their attendance
     const handleOpenMarkAttendanceModal = (attendanceId: number) => {
         setSelectedAttendanceId(attendanceId);
@@ -144,7 +145,7 @@ export default function ClassDetailPage() {
         <>
             {/* --- Render All Modals --- */}
             <AddTopicModal isOpen={isTopicModalOpen} onClose={() => setIsTopicModalOpen(false)} classId={classData.id} nextOrder={classData.topics?.length + 1 || 1} onTopicCreated={fetchData} />
-            <AddActivityModal 
+            <AddActivityModal
                 isOpen={isActivityModalOpen}
                 onClose={() => setIsActivityModalOpen(false)}
                 onSelectMaterial={() => { setIsActivityModalOpen(false); setIsMaterialModalOpen(true); }}
@@ -154,7 +155,7 @@ export default function ClassDetailPage() {
             <AddMaterialModal isOpen={isMaterialModalOpen} onClose={() => setIsMaterialModalOpen(false)} topicId={selectedTopicId} onMaterialAdded={fetchData} />
             <EditTopicModal isOpen={isEditTopicModalOpen} onClose={() => setIsEditTopicModalOpen(false)} topic={editingTopic} onTopicUpdated={fetchData} />
             <AddAssignmentModal isOpen={isAssignmentModalOpen} onClose={() => setIsAssignmentModalOpen(false)} topicId={selectedTopicId} onAssignmentAdded={fetchData} />
-            
+
             <AddAttendanceModal isOpen={isAddAttendanceModalOpen} onClose={() => setIsAddAttendanceModalOpen(false)} topicId={selectedTopicId} onAttendanceAdded={fetchData} />
             <MarkAttendanceModal
                 isOpen={isMarkAttendanceModalOpen}
@@ -166,7 +167,7 @@ export default function ClassDetailPage() {
 
             {/* --- Page Display --- */}
             <div className="space-y-6">
-                 <Link href="/dashboard" className="inline-flex items-center gap-2 text-gray-600 hover:text-blue-700 font-medium transition-colors">
+                <Link href="/dashboard" className="inline-flex items-center gap-2 text-gray-600 hover:text-blue-700 font-medium transition-colors">
                     <FaArrowLeft />
                     <span>Kembali ke Daftar Kelas</span>
                 </Link>
@@ -194,7 +195,7 @@ export default function ClassDetailPage() {
                                     </div>
                                 )}
                             </div>
-                            
+
                             {openTopics[topic.id] && (
                                 <div className="pt-4 pl-6 pr-2 space-y-3 border-t mt-3">
                                     {topic.materials?.map((material) => (
@@ -204,7 +205,7 @@ export default function ClassDetailPage() {
                                                 {material.youtubeUrl && <FaYoutube className="text-red-600" />}
                                                 <span>{material.title}</span>
                                             </div>
-                                            
+
                                             {material.fileUrl && (
                                                 <a href={`${backendUrl}${material.fileUrl}`} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 hover:underline mt-1 block">
                                                     Download Materi
@@ -218,63 +219,73 @@ export default function ClassDetailPage() {
                                             )}
                                         </div>
                                     ))}
-                                    
+
                                     {topic.assignments?.map((assignment) => {
-    // 1. Ambil data yang relevan dari setiap tugas
-    const isStudent = user?.role === 'siswa';
-    const attemptLimit = assignment.attemptLimit || 1;
-    const studentAttemptCount = assignment.studentProgress?.attemptCount || 0;
-    
-    // 2. Tentukan apakah siswa masih bisa mengerjakan tugas ini
-    const canStillAttempt = !isStudent || (studentAttemptCount < attemptLimit);
-    
-    return (
-        <div 
-            key={assignment.id} 
-            className={`flex justify-between items-center p-3 border rounded-md transition-colors ${
-                canStillAttempt
-                    ? 'bg-slate-50 hover:bg-slate-100' // Tampilan jika bisa diakses
-                    : 'bg-gray-200 text-gray-500'      // Tampilan jika sudah tidak bisa
-            }`}
-        >
-            {canStillAttempt ? (
-                // JIKA SISWA MASIH PUNYA KESEMPATAN (atau jika Anda adalah GURU)
-                <Link href={`/tugas/${assignment.id}`} className="flex items-center gap-3 font-semibold text-gray-700 w-full">
-                    <FaClipboardList className="text-green-500" />
-                    <div className="flex-grow">
-                        <span>{assignment.title}</span>
-                    </div>
-                    {isStudent && (
-                        <span className="text-sm text-blue-600 font-normal">
-                            Sisa: {attemptLimit - studentAttemptCount}x
-                        </span>
-                    )}
-                </Link>
-            ) : (
-                // JIKA KESEMPATAN SISWA SUDAH HABIS
-                <div className="flex items-center gap-3 font-semibold w-full cursor-not-allowed">
-                    <FaClipboardList className="text-gray-400" />
-                    <div className="flex-grow">
-                        <span>{assignment.title}</span>
-                    </div>
-                    <span className="text-sm text-red-600 font-bold">
-                        Selesai
-                    </span>
-                </div>
-            )}
-        </div>
-    );
-})}
-                                    
+                                        // 1. Ambil data yang relevan dari setiap tugas
+                                        const isStudent = user?.role === 'siswa';
+                                        const attemptLimit = assignment.attemptLimit || 1;
+                                        const studentAttemptCount = assignment.studentProgress?.attemptCount || 0;
+
+                                        // 2. Tentukan apakah siswa masih bisa mengerjakan tugas ini
+                                        const canStillAttempt = !isStudent || (studentAttemptCount < attemptLimit);
+
+                                        return (
+                                            <div
+                                                key={assignment.id}
+                                                className={`flex justify-between items-center p-3 border rounded-md transition-colors ${canStillAttempt
+                                                        ? 'bg-slate-50 hover:bg-slate-100' // Tampilan jika bisa diakses
+                                                        : 'bg-gray-200 text-gray-500'      // Tampilan jika sudah tidak bisa
+                                                    }`}
+                                            >
+                                                {canStillAttempt ? (
+                                                    // JIKA SISWA MASIH PUNYA KESEMPATAN (atau jika Anda adalah GURU)
+                                                    <Link href={`/tugas/${assignment.id}`} className="flex items-center gap-3 font-semibold text-gray-700 w-full">
+                                                        <FaClipboardList className="text-green-500" />
+                                                        <div className="flex-grow">
+                                                            <span>{assignment.title}</span>
+                                                        </div>
+                                                        {isStudent && (
+                                                            <span className="text-sm text-blue-600 font-normal">
+                                                                Sisa: {attemptLimit - studentAttemptCount}x
+                                                            </span>
+                                                        )}
+                                                    </Link>
+                                                ) : (
+                                                    // JIKA KESEMPATAN SISWA SUDAH HABIS
+                                                    <div className="flex items-center gap-3 font-semibold w-full cursor-not-allowed">
+                                                        <FaClipboardList className="text-gray-400" />
+                                                        <div className="flex-grow">
+                                                            <span>{assignment.title}</span>
+                                                        </div>
+                                                        <span className="text-sm text-red-600 font-bold">
+                                                            Selesai
+                                                        </span>
+                                                        
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+
                                     {topic.attendance && (
                                         <div className="flex justify-between items-center p-3 bg-slate-50 border rounded-md hover:bg-slate-100 transition-colors">
                                             <div className="flex items-center gap-3 font-semibold text-gray-800">
                                                 <FaCalendarCheck className="text-indigo-500" />
                                                 <span>{topic.attendance.title}</span>
                                             </div>
-                                            
-                                            {user?.role === 'siswa' && (
-                                                <button 
+
+                                            {/* INI BAGIAN PERBAIKANNYA */}
+                                            {isTeacher ? (
+                                                // Tampilan untuk Guru (sekarang menjadi tautan)
+                                                <Link
+                                                    href={`/absensi/${topic.attendance.id}`}
+                                                    className="text-blue-600 hover:underline font-semibold text-sm"
+                                                >
+                                                    Lihat Rekap
+                                                </Link>
+                                            ) : (
+                                                // Tampilan untuk Siswa (tetap tombol)
+                                                <button
                                                     onClick={() => handleOpenMarkAttendanceModal(topic.attendance!.id)}
                                                     className="btn-primary text-sm"
                                                 >
@@ -283,7 +294,7 @@ export default function ClassDetailPage() {
                                             )}
                                         </div>
                                     )}
-                                    
+
                                     {isEditing && (
                                         <div className="mt-4 pt-4 border-t border-dashed">
                                             <button onClick={() => handleOpenActivityModal(topic.id)} className="text-blue-600 font-semibold hover:text-blue-800">
@@ -295,7 +306,7 @@ export default function ClassDetailPage() {
                             )}
                         </div>
                     ))}
-                    
+
                     {isEditing && (
                         <div className="flex justify-center mt-6">
                             <button onClick={() => setIsTopicModalOpen(true)} className="btn-primary font-bold py-2 px-6">

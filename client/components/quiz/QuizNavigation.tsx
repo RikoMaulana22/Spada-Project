@@ -11,8 +11,8 @@ interface QuizNavigationProps {
 
 export default function QuizNavigation({ results }: QuizNavigationProps) {
   const router = useRouter();
-   const handleFinishReview = () => {
-    router.push('/kelas/6'); // Arahkan ke halaman dashboard
+  const handleFinishReview = () => {
+    router.push('/kelas/1'); // Arahkan ke halaman dashboard
   };
 
   return (
@@ -23,16 +23,15 @@ export default function QuizNavigation({ results }: QuizNavigationProps) {
           {results.map((result, index) => (
             <a
               key={index}
-              className={`h-8 w-8 flex items-center justify-center rounded text-white font-bold ${
-                result.isCorrect ? 'bg-green-500' : 'bg-red-500'
-              }`}
+              className={`h-8 w-8 flex items-center justify-center rounded text-white font-bold ${result.isCorrect ? 'bg-green-500' : 'bg-red-500'
+                }`}
             >
               {index + 1}
             </a>
           ))}
         </div>
-        <button onClick={handleFinishReview} 
-        className="text-blue-600 hover:underline mt-4 text-sm">
+        <button onClick={handleFinishReview}
+          className="text-blue-600 hover:underline mt-4 text-sm">
           Finish review
         </button>
       </div>

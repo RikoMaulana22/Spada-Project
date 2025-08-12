@@ -35,7 +35,7 @@ export default function SubmissionsPage() {
     const fetchData = useCallback(() => {
         if (!assignmentId) return;
         setIsLoading(true);
-        
+
         // --- PERBAIKAN 3: Panggil endpoint yang sudah kita perbaiki di controller ---
         apiClient.get(`/assignments/${assignmentId}/submissions`)
             .then(response => setData(response.data))
@@ -94,7 +94,7 @@ export default function SubmissionsPage() {
                                     <td className="p-3 text-sm">{new Date(sub.submissionDate).toLocaleString('id-ID', { dateStyle: 'long', timeStyle: 'short' })}</td>
                                     <td className="p-3">
                                         {sub.score !== null ? (
-                                             <span className={`px-3 py-1 text-sm font-bold rounded-full ${sub.score >= 75 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                                            <span className={`px-3 py-1 text-sm font-bold rounded-full ${sub.score >= 75 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
                                                 {sub.score}
                                             </span>
                                         ) : (
@@ -102,7 +102,7 @@ export default function SubmissionsPage() {
                                         )}
                                     </td>
                                     <td className="p-3">
-                                        <button 
+                                        <button
                                             onClick={() => handleOpenGradeModal(sub)}
                                             className="text-blue-600 hover:text-blue-800 font-semibold flex items-center gap-2 text-sm"
                                         >

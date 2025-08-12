@@ -56,6 +56,7 @@ export default function GradeSubmissionModal({ isOpen, onClose, submission, onGr
   };
   
   return (
+    <div className="text-gray-800">
     <Modal isOpen={isOpen} onClose={onClose} title={`Beri Nilai untuk ${submission?.student.fullName}`}>
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Area feedback tidak lagi diperlukan di sini */}
@@ -87,5 +88,6 @@ export default function GradeSubmissionModal({ isOpen, onClose, submission, onGr
         </div>
       </form>
     </Modal>
+    </div>
   );
 }

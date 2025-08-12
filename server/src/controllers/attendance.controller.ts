@@ -76,7 +76,12 @@ export const getAttendanceDetails = async (req: AuthRequest, res: Response): Pro
       include: {
         records: {
           orderBy: { timestamp: 'asc' },
-          include: {
+          // PASTIKAN SEMUA FIELD INI ADA
+          select: {
+            timestamp: true,
+            status: true, // <-- DATA STATUS DITAMBAHKAN DI SINI
+            notes: true,   // <-- DATA KETERANGAN DITAMBAHKAN DI SINI
+            proofUrl: true,
             student: {
               select: {
                 id: true,
@@ -119,69 +124,45 @@ export const markAttendanceRecord = async (req: AuthRequest, res: Response) => {
     }
 
     try {
+        // 1. Ambil detail sesi absensi
         const attendanceSession = await prisma.attendance.findUnique({
             where: { id: parseInt(attendanceId) },
-            include: { topic: { select: { classId: true } } }
         });
 
         if (!attendanceSession) {
             return res.status(404).json({ message: 'Sesi absensi tidak ditemukan.' });
         }
-        
-        const now = new Date();
-        const todayStart = new Date();
-        todayStart.setHours(0, 0, 0, 0);
-        const todayEnd = new Date();
-        todayEnd.setHours(23, 59, 59, 999);
 
-        const existingRecord = await prisma.dailyAttendance.findFirst({
+        // 2. Validasi Waktu: Pastikan absensi dilakukan dalam rentang waktu yang ditentukan
+        const now = new Date();
+        if (now < attendanceSession.openTime || now > attendanceSession.closeTime) {
+            return res.status(403).json({ message: 'Tidak dapat mengisi absensi di luar waktu yang ditentukan.' });
+        }
+
+        // 3. Cek apakah siswa sudah pernah absen di sesi ini
+        const existingRecord = await prisma.attendanceRecord.findFirst({
             where: {
                 studentId: studentId,
-                classId: attendanceSession.topic.classId,
-                date: {
-                    gte: todayStart,
-                    lt: todayEnd
-                }
-            }
-            
+                attendanceId: parseInt(attendanceId),
+            },
         });
 
         if (existingRecord) {
-            return res.status(409).json({ message: 'Anda sudah mencatat kehadiran untuk kelas ini hari ini.' });
+            return res.status(409).json({ message: 'Anda sudah mencatat kehadiran untuk sesi ini.' });
         }
 
-        // --- PERBAIKAN UTAMA: GUNAKAN `UPSERT` BUKAN `CREATE` ---
-
-        // Data yang akan di-create atau di-update
-        const dataForUpsert = {
-            date: todayStart, // Gunakan awal hari agar tanggalnya selalu sama untuk hari yang sama
-            status,
-            notes: notes || null,
-            proofUrl: proofFile ? proofFile.path.replace('public', '').replace(/\\/g, '/') : null,
-            student: { connect: { id: studentId } },
-            class: { connect: { id: attendanceSession.topic.classId } },
-            recordedBy: { connect: { id: studentId } }
-        };
-
-        const record = await prisma.dailyAttendance.upsert({
-             where: {
-                // Cari record berdasarkan kombinasi unik yang baru
-                date_studentId_classId: {
-                    date: todayStart,
-                    studentId: studentId,
-                    classId: attendanceSession.topic.classId
-                }
-            },
-            update: {
+        // 4. Buat catatan kehadiran baru di tabel yang benar (AttendanceRecord)
+        const newRecord = await prisma.attendanceRecord.create({
+            data: {
                 status,
                 notes: notes || null,
                 proofUrl: proofFile ? proofFile.path.replace('public', '').replace(/\\/g, '/') : null,
-                recordedBy: { connect: { id: studentId } } // Update juga siapa yang merekam
+                student: { connect: { id: studentId } },
+                attendance: { connect: { id: parseInt(attendanceId) } },
             },
-           create: dataForUpsert
         });
 
-        res.status(201).json({ message: 'Kehadiran berhasil dicatat!', record });
+        res.status(201).json({ message: 'Kehadiran berhasil dicatat!', record: newRecord });
 
     } catch (error: any) {
         console.error("Gagal mencatat kehadiran:", error);

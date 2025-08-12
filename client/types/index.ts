@@ -61,6 +61,7 @@ export interface AssignmentInfo {
   title: string;
   type: string;
   dueDate: string;
+  
 }
 
 export interface AssignmentDetails {

@@ -44,7 +44,7 @@ export const getSubmissionForReview = async (req: AuthRequest, res: Response): P
                             include: {
                                 // `true` akan mengambil semua field dari tabel Option
                                 // termasuk id, optionText, isCorrect, dan explanation
-                                options: true 
+                                options: true
                             }
                         }
                     }
@@ -103,8 +103,8 @@ export const createAssignmentForTopic = async (req: AuthRequest, res: Response):
                 return;
             }
             if (type === 'pilgan' && (!q.options || q.options.length < 1)) {
-                 res.status(400).json({ message: "Setiap soal pilihan ganda harus memiliki minimal satu pilihan jawaban." });
-                 return;
+                res.status(400).json({ message: "Setiap soal pilihan ganda harus memiliki minimal satu pilihan jawaban." });
+                return;
             }
         }
     }
@@ -169,9 +169,9 @@ export const submitAssignment = async (req: AuthRequest, res: Response) => {
 
         const assignment = await prisma.assignment.findUnique({
             where: { id: Number(assignmentId) },
-            include: { 
+            include: {
                 questions: { include: { options: { where: { isCorrect: true } } } },
-                topic: { select: { classId: true } } 
+                topic: { select: { classId: true } }
             }
         });
 
@@ -318,7 +318,7 @@ export const getAssignmentDetails = async (req: AuthRequest, res: Response): Pro
             res.status(404).json({ message: 'Tugas atau kuis tidak ditemukan.' });
             return;
         }
-        
+
         res.status(200).json(assignment);
 
     } catch (error) {
@@ -344,8 +344,8 @@ export const gradeSubmission = async (req: AuthRequest, res: Response): Promise<
             select: { assignment: { select: { topic: { select: { class: { select: { teacherId: true } } } } } } }
         });
 
-        if (!submission || submission.assignment?.topic?.class?.teacherId !== teacherId) {  
-             res.status(403).json({ message: "Akses ditolak." });
+        if (!submission || submission.assignment?.topic?.class?.teacherId !== teacherId) {
+            res.status(403).json({ message: "Akses ditolak." });
             return;
         }
 
@@ -424,7 +424,7 @@ export const getAssignmentById = async (req: AuthRequest, res: Response): Promis
             res.status(404).json({ message: 'Tugas atau kuis tidak ditemukan.' });
             return;
         }
-        
+
         res.status(200).json(assignment);
 
     } catch (error) {
