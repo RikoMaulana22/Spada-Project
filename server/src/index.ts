@@ -33,5 +33,5 @@ app.use('/api', mainRouter);
 app.listen(PORT, HOST, () => {
   console.log(`🚀 Server berjalan dan siap diakses dari jaringan.`);
   console.log(`   Lokal:     http://localhost:${PORT}`);
-  console.log(`   Jaringan:  http://192.168.1.19:${PORT}`);
+  console.log(`   Jaringan:  http://192.168.1.14:${PORT}`);
 });

@@ -33,7 +33,7 @@ const AttendanceDetailModal = ({ isOpen, onClose, student, allAttendances, class
     // --- LOGIKA UTAMA: Mengubah data absensi menjadi format Grid ---
     const { gridData, subjects, maxMeetings } = useMemo(() => {
         if (!allAttendances) {
-            return { gridData: {}, subjects: [], maxMeetings: 8 };
+            return { gridData: {}, subjects: [], maxMeetings: 15 };
         }
 
         const studentAttendances = allAttendances.filter(att => att.studentId === student.id);
@@ -41,11 +41,16 @@ const AttendanceDetailModal = ({ isOpen, onClose, student, allAttendances, class
         // 1. Kelompokkan absensi per mata pelajaran
         const groupedBySubject: Record<string, DailyAttendance[]> = {};
         studentAttendances.forEach(att => {
-            const subjectName = att.class.subject.name;
+        const subjectName = att.class?.subject?.name;
+             if (subjectName) {
             if (!groupedBySubject[subjectName]) {
                 groupedBySubject[subjectName] = [];
             }
             groupedBySubject[subjectName].push(att);
+        }else {
+            // (Opsional) Memberi tahu di console jika ada data yang dilewati
+            console.warn("Melewati data absensi karena tidak ada info mata pelajaran:", att);
+        }
         });
 
         // 2. Ubah menjadi format grid { [subject]: { [meeting_number]: status } }
@@ -70,7 +75,7 @@ const AttendanceDetailModal = ({ isOpen, onClose, student, allAttendances, class
         });
         
         // Pastikan minimal ada 8 kolom seperti di contoh gambar
-        if (maxMeetings < 8) maxMeetings = 8;
+        if (maxMeetings < 10) maxMeetings = 10;
 
         return { gridData: grid, subjects: subjectKeys, maxMeetings };
     }, [allAttendances, student.id]);
