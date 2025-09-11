@@ -8,6 +8,7 @@ interface CreateClassModalProps {
   isOpen: boolean;
   onClose: () => void;
   onClassCreated: () => void;
+  
 }
 
 export default function CreateClassModal({ isOpen, onClose, onClassCreated }: CreateClassModalProps) {

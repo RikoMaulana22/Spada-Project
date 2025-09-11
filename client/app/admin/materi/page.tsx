@@ -87,12 +87,12 @@ export default function ManageGlobalMaterialsPage() {
                 <h2 className="text-xl font-semibold mb-4 text-gray-800">Unggah Materi Baru</h2>
                 <form onSubmit={handleUpload} className="space-y-4">
                     <div>
-                        <label className="block text-sm font-medium text-gray-800">Judul Materi</label>
-                        <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} required className="form-input w-full mt-1" />
+                        <label className="block  text-sm font-medium text-gray-800">Judul Materi</label>
+                        <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} required className="form-input w-full mt-1  border py-2 px-2 rounded-md shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50" />
                     </div>
                     <div>
                         <label className="block text-sm font-medium text-gray-800">File</label>
-                        <input type="file" onChange={(e) => setFile(e.target.files ? e.target.files[0] : null)} required className="form-input w-full mt-1" />
+                        <input type="file" onChange={(e) => setFile(e.target.files ? e.target.files[0] : null)} required className="form-input w-full mt-1 border py-2 px-2 rounded-md shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50" />
                     </div>
                     <div className="text-right ">
                         <button type="submit" disabled={isUploading} className="px-6 py-2 bg-blue-800 text-white font-semibold rounded-lg hover:bg-blue-700 disabled:bg-blue-300">

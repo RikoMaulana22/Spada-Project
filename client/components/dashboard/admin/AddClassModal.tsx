@@ -2,8 +2,14 @@
 
 import { useState, useEffect, FormEvent } from 'react';
 import apiClient from '@/lib/axios';
-import Modal from '@/components/ui/Modal';
 import toast from 'react-hot-toast';
+
+// Komponen Ikon sederhana untuk tombol tutup
+const CloseIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+  </svg>
+);
 
 interface Teacher { id: number; fullName: string; }
 interface Subject { id: number; name: string; }
@@ -25,6 +31,13 @@ export default function AddClassModal({ isOpen, onClose, onClassCreated }: AddCl
 
     useEffect(() => {
         if (isOpen) {
+            // Reset state form setiap kali modal dibuka
+            setName('');
+            setDescription('');
+            setSubjectId('');
+            setTeacherId('');
+            setIsLoading(false);
+
             const fetchPrerequisites = async () => {
                 try {
                     const [teachersRes, subjectsRes] = await Promise.all([
@@ -57,40 +70,72 @@ export default function AddClassModal({ isOpen, onClose, onClassCreated }: AddCl
         }
     };
 
+    if (!isOpen) return null;
+    
+    const inputClasses = "w-full px-4 py-2 border border-gray-300 rounded-md bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500";
+    const labelClasses = "block text-sm font-medium text-gray-700 mb-1";
+
     return (
-        <div className=' text-gray-800'>
-        <Modal isOpen={isOpen} onClose={onClose} title="Buat Kelas Baru">
-            <form onSubmit={handleSubmit} className="space-y-4">
-                <div>
-                    <label className="block text-sm font-medium">Nama Kelas</label>
-                    <input type="text" value={name} onChange={e => setName(e.target.value)} required className="form-input w-full mt-1" placeholder="Contoh: Kelas 7A" />
-                </div>
-                <div>
-                    <label className="block text-sm font-medium">Deskripsi (Opsional)</label>
-                    <textarea value={description} onChange={e => setDescription(e.target.value)} rows={3} className="form-textarea w-full mt-1" />
-                </div>
-                <div>
-                    <label className="block text-sm font-medium">Mata Pelajaran</label>
-                    <select value={subjectId} onChange={e => setSubjectId(e.target.value)} required className="form-select w-full mt-1">
-                        <option value="">-- Pilih Mata Pelajaran --</option>
-                        {subjects.map(subject => <option key={subject.id} value={subject.id}>{subject.name}</option>)}
-                    </select>
-                </div>
-                <div>
-                    <label className="block text-sm font-medium">Guru Pengajar</label>
-                    <select value={teacherId} onChange={e => setTeacherId(e.target.value)} required className="form-select w-full mt-1">
-                        <option value="">-- Pilih Guru --</option>
-                        {teachers.map(teacher => <option key={teacher.id} value={teacher.id}>{teacher.fullName}</option>)}
-                    </select>
-                </div>
-                <div className="flex justify-end gap-4 pt-4 border-t">
-                    <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-200 rounded-lg">Batal</button>
-                    <button type="submit" disabled={isLoading} className="btn-primary">
-                        {isLoading ? "Menyimpan..." : "Simpan Kelas"}
-                    </button>
-                </div>
-            </form>
-        </Modal>
+        <div className="fixed inset-0 z-50 bg-white text-gray-900">
+            <div className="w-full h-full flex flex-col">
+                {/* Header Gelap */}
+                <header className="flex-shrink-0 bg-blue-800 shadow-md">
+                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                        <div className="flex items-center justify-between h-16">
+                            <h2 className="text-lg font-bold text-white">Buat Kelas Baru</h2>
+                            <button onClick={onClose} className="text-gray-300 hover:text-white transition-colors">
+                               <CloseIcon/>
+                            </button>
+                        </div>
+                    </div>
+                </header>   
+                
+                {/* Body dengan background terang */}
+                <main className="flex-grow bg-gray-100 overflow-y-auto">
+                    <div className="max-w-3xl mx-auto p-6 sm:p-8">
+                        <form onSubmit={handleSubmit} className="space-y-6 bg-white p-8 rounded-lg shadow-sm">
+                            
+                            <div>
+                                <label htmlFor="name" className={labelClasses}>Nama Kelas</label>
+                                <input id="name" type="text" value={name} onChange={e => setName(e.target.value)} required className={inputClasses} placeholder="Contoh: Fisika XI IPA 1" />
+                            </div>
+
+                            {/* Grid untuk Mata Pelajaran dan Guru */}
+                            <div className='grid grid-cols-1 sm:grid-cols-2 gap-6'>
+                                <div>
+                                    <label htmlFor='subject' className={labelClasses}>Mata Pelajaran</label>
+                                    <select id='subject' value={subjectId} onChange={e => setSubjectId(e.target.value)} required className={inputClasses}>
+                                        <option value="" disabled>-- Pilih Mata Pelajaran --</option>
+                                        {subjects.map(subject => <option key={subject.id} value={subject.id}>{subject.name}</option>)}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label htmlFor='teacher' className={labelClasses}>Guru Pengajar</label>
+                                    <select id='teacher' value={teacherId} onChange={e => setTeacherId(e.target.value)} required className={inputClasses}>
+                                        <option value="" disabled>-- Pilih Guru --</option>
+                                        {teachers.map(teacher => <option key={teacher.id} value={teacher.id}>{teacher.fullName}</option>)}
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <label htmlFor="description" className={labelClasses}>Deskripsi (Opsional)</label>
+                                <textarea id="description" value={description} onChange={e => setDescription(e.target.value)} rows={4} className={inputClasses} placeholder="Jelaskan sedikit mengenai kelas ini..." />
+                            </div>
+
+                            {/* Tombol Aksi */}
+                            <div className="flex justify-end gap-4 pt-4 border-t border-gray-200">
+                                <button type="button" onClick={onClose} className="px-5 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 transition-colors font-medium">
+                                    Batal
+                                </button>
+                                <button type="submit" disabled={isLoading} className="px-5 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium">
+                                    {isLoading ? "Menyimpan..." : "Simpan Kelas"}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </main>
+            </div>
         </div>
     );
 }

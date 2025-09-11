@@ -74,11 +74,11 @@ export default function ManageAnnouncementsPage() {
                     <form onSubmit={handleSubmit} className="space-y-4">
                         <div>
                             <label className="block text-sm font-medium border-gray-500">Judul</label>
-                            <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} required className="form-input w-full mt-1" />
+                            <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} required className="form-input w-full mt-1 py-2 px-3 rounded-md border border-gray-300 focus:border-indigo-500 focus:ring-indigo-500" />
                         </div>
                         <div>
                             <label className="block text-sm font-medium border-gray-500">Isi Pengumuman</label>
-                            <textarea value={content} onChange={(e) => setContent(e.target.value)} required rows={8} className="form-textarea w-full mt-1"></textarea>
+                            <textarea value={content} onChange={(e) => setContent(e.target.value)} required rows={8} className="form-textarea w-full mt-1 py-2 px-3 rounded-md border border-gray-300 focus:border-indigo-500 focus:ring-indigo-500"></textarea>
                         </div>
                         <div className="text-right">
                             <button type="submit" disabled={isSubmitting} className="w-full px-6 py-2 bg-blue-600 border-gray-500 text-white font-semibold rounded-lg hover:bg-blue-700 disabled:bg-blue-300">

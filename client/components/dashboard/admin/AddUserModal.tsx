@@ -3,8 +3,14 @@
 
 import { useState, FormEvent, useEffect } from 'react';
 import apiClient from '@/lib/axios';
-import Modal from '@/components/ui/Modal';
 import toast from 'react-hot-toast';
+
+// Komponen Ikon sederhana untuk tombol tutup
+const CloseIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+  </svg>
+);
 
 interface AddUserModalProps {
   isOpen: boolean;
@@ -32,13 +38,22 @@ export default function AddUserModal({ isOpen, onClose, onUserAdded }: AddUserMo
   const [isLoading, setIsLoading] = useState(false);
   const [availableClasses, setAvailableClasses] = useState<AvailableClass[]>([]);
 
+  // Reset form setiap kali modal dibuka untuk UX yang lebih baik
+  useEffect(() => {
+    if (isOpen) {
+        setFormData(initialState);
+    }
+  }, [isOpen]);
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-
-    if (name === 'role' && value !== 'wali_kelas') {
-        setFormData(prev => ({...prev, homeroomClassId: ''}));
-    }
+    setFormData(prev => {
+      const newState = { ...prev, [name]: value };
+      if (name === 'role' && value !== 'wali_kelas') {
+        newState.homeroomClassId = '';
+      }
+      return newState;
+    });
   };
 
   useEffect(() => {
@@ -63,14 +78,14 @@ export default function AddUserModal({ isOpen, onClose, onUserAdded }: AddUserMo
     const toastId = toast.loading('Menyimpan pengguna...');
     try {
       const payload: any = { ...formData };
-
-      if (payload.role !== 'siswa') delete payload.nisn;
-      if (payload.role !== 'wali_kelas') delete payload.homeroomClassId;
-      
+      if (payload.role !== 'siswa' || !payload.nisn) delete payload.nisn;
+      if (payload.role !== 'wali_kelas' || !payload.homeroomClassId) {
+        delete payload.homeroomClassId;
+      }
       await apiClient.post('/admin/users', payload);
       toast.success('Pengguna baru berhasil ditambahkan!', { id: toastId });
       onUserAdded();
-      handleClose();
+      onClose();
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Gagal menambahkan pengguna.', { id: toastId });
     } finally {
@@ -78,58 +93,94 @@ export default function AddUserModal({ isOpen, onClose, onUserAdded }: AddUserMo
     }
   };
 
-  const handleClose = () => {
-    setFormData(initialState);
-    onClose();
-  };
+  if (!isOpen) return null;
+
+  const inputClasses = "w-full px-4 py-2 border border-gray-300 rounded-md bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500";
+  const labelClasses = "block text-sm font-medium text-gray-700 mb-1";
 
   return (
-    <div className='text-gray-900'>
-    <Modal isOpen={isOpen} onClose={handleClose} title="Tambah Pengguna Baru">
-      <form onSubmit={handleSubmit} className="space-y-4">
-        {/* Input untuk fullName, username, password, email */}
-        <input type="text" name="fullName" value={formData.fullName} onChange={handleChange} placeholder="Nama Lengkap" required className="form-input max-w-md p-2 border-2 border-gray-400 rounded-md w-full" />
-        <input type="text" name="username" value={formData.username} onChange={handleChange} placeholder="Username" required className="form-input max-w-md p-2 border-2 border-gray-400 rounded-md w-full" />
-        <input type="password" name="password" value={formData.password} onChange={handleChange} placeholder="Password" required className="form-input max-w-md p-2 border-2 border-gray-400 rounded-md w-full" />
-        <input type="email" name="email" value={formData.email} onChange={handleChange} placeholder="Email" required className="form-input max-w-md p-2 border-2 border-gray-400 rounded-md w-full" />
-        
-        <div>
-          <label className="block text-sm font-medium">Peran</label>
-          <select name="role" value={formData.role} onChange={handleChange} className="form-input max-w-md p-2 border-2 border-gray-400 rounded-md w-full">
-            <option value="siswa">Siswa</option>
-            <option value="guru">Guru</option>
-            <option value="wali_kelas">Wali Kelas</option>
-            <option value="admin">Admin</option>
-          </select>
-        </div>
-
-        {formData.role === 'siswa' && (
-          <div>
-            <label className="block text-sm font-medium">NISN (Opsional)</label>
-            <input type="text" name="nisn" value={formData.nisn} onChange={handleChange} className="form-input max-w-md p-2 border-2 border-gray-400 rounded-md w-full" />
+    <div className="fixed inset-0 z-50 bg-white text-gray-900">
+      <div className="w-full h-full flex flex-col">
+        {/* Header Biru Sesuai Permintaan */}
+        <header className="flex-shrink-0 bg-blue-800 shadow-md">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between h-16">
+              <h2 className="text-lg font-bold text-white">Tambah Pengguna Baru</h2>
+              <button onClick={onClose} className="text-gray-300 hover:text-white transition-colors">
+                <CloseIcon />
+              </button>
+            </div>
           </div>
-        )}
+        </header>
 
-        {formData.role === 'wali_kelas' && (
-          <div>
-            <label className="block text-sm font-medium">Tugaskan ke Kelas</label>
-            <select name="homeroomClassId" value={formData.homeroomClassId} onChange={handleChange} required className="form-select w-full mt-1">
-              <option value="">-- Pilih Kelas --</option>
-              {availableClasses.map(cls => (
-                <option key={cls.id} value={cls.id}>{cls.name}</option>
-              ))}
-            </select>
+        {/* Body dengan background terang */}
+        <main className="flex-grow bg-gray-100 overflow-y-auto">
+          <div className="max-w-4xl mx-auto p-6 sm:p-8">
+            <form onSubmit={handleSubmit} className="bg-white p-8 rounded-lg shadow-sm grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+              
+              <div className="md:col-span-2">
+                <label htmlFor="fullName" className={labelClasses}>Nama Lengkap</label>
+                <input type="text" id="fullName" name="fullName" value={formData.fullName} onChange={handleChange} placeholder="Masukkan nama lengkap" required className={inputClasses} />
+              </div>
+
+              <div>
+                <label htmlFor="username" className={labelClasses}>Username</label>
+                <input type="text" id="username" name="username" value={formData.username} onChange={handleChange} placeholder="Masukkan username" required className={inputClasses} />
+              </div>
+
+              <div>
+                <label htmlFor="password" className={labelClasses}>Password</label>
+                <input type="password" id="password" name="password" value={formData.password} onChange={handleChange} placeholder="Masukkan password" required className={inputClasses} />
+              </div>
+
+              <div className="md:col-span-2">
+                <label htmlFor="email" className={labelClasses}>Email</label>
+                <input type="email" id="email" name="email" value={formData.email} onChange={handleChange} placeholder="Masukkan email" required className={inputClasses} />
+              </div>
+
+              <div className="md:col-span-2">
+                <label htmlFor="role" className={labelClasses}>Peran</label>
+                <select id="role" name="role" value={formData.role} onChange={handleChange} className={inputClasses}>
+                  <option value="siswa">Siswa</option>
+                  <option value="guru">Guru</option>
+                  <option value="wali_kelas">Wali Kelas</option>
+                  <option value="admin">Admin</option>
+                </select>
+              </div>
+
+              {/* Conditional Fields */}
+              {formData.role === 'siswa' && (
+                <div className="md:col-span-2">
+                  <label htmlFor="nisn" className={labelClasses}>NISN (Opsional)</label>
+                  <input type="text" id="nisn" name="nisn" value={formData.nisn} onChange={handleChange} placeholder="Masukkan NISN siswa" className={inputClasses} />
+                </div>
+              )}
+
+              {formData.role === 'wali_kelas' && (
+                <div className="md:col-span-2">
+                  <label htmlFor="homeroomClassId" className={labelClasses}>Tugaskan ke Kelas</label>
+                  <select id="homeroomClassId" name="homeroomClassId" value={formData.homeroomClassId} onChange={handleChange} required className={inputClasses}>
+                    <option value="">-- Pilih Kelas --</option>
+                    {availableClasses.map(cls => (
+                      <option key={cls.id} value={cls.id}>{cls.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              <div className="md:col-span-2 flex justify-end gap-4 pt-4 mt-4 border-t border-gray-200">
+                <button type="button" onClick={onClose} className="px-5 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 transition-colors font-medium">
+                  Batal
+                </button>
+                <button type="submit" disabled={isLoading} className="px-5 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium">
+                  {isLoading ? 'Menyimpan...' : 'Simpan Pengguna'}
+                </button>
+              </div>
+            </form>
           </div>
-        )}
-
-        <div className="flex justify-end gap-4 pt-4 border-t mt-6">
-          <button type="button" onClick={handleClose} className="px-4 py-2 bg-gray-200 rounded-lg">Batal</button>
-          <button type="submit" disabled={isLoading} className="btn-primary">
-            {isLoading ? 'Menyimpan...' : 'Simpan Pengguna'}
-          </button>
-        </div>
-      </form>
-    </Modal>
+        </main>
+      </div>
     </div>
   );
 }
