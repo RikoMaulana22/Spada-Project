@@ -159,7 +159,8 @@ export const getAttendanceReport = async (req: AuthRequest, res: Response): Prom
         const report = attendanceData.flatMap(cls => 
             cls.topics.map(topic => ({
                 className: cls.name,
-                teacherName: cls.teacher.fullName,
+                // PERBAIKAN: Tambahkan fallback jika guru tidak ada (telah dihapus)
+                teacherName: cls.teacher?.fullName || '(Guru Dihapus)', 
                 totalStudents: cls._count.members,
                 topicTitle: topic.title,
                 attendanceTitle: topic.attendance!.title,
@@ -208,7 +209,7 @@ export const getGradeReport = async (req: AuthRequest, res: Response): Promise<v
                     }
                     report.push({
                         className: cls.name,
-                        teacherName: cls.teacher.fullName,
+                        teacherName: cls.teacher?.fullName || '(Guru Dihapus)',
                         assignmentTitle: assignment.title,
                         totalSubmissions: assignment._count.submissions,
                         totalStudents: cls._count.members,

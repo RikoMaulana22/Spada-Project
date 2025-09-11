@@ -141,7 +141,7 @@ export const getClassById = async (req: AuthRequest, res: Response): Promise<voi
             return { ...topic, assignments: processedAssignments };
         });
         
-        const isEnrolled = classData.members.length > 0 || classData.teacher.id === userId;
+        const isEnrolled = classData.members.length > 0 || (classData.teacher && classData.teacher.id === userId);
         const { members, ...responseData } = classData;
 
         // Kirim data yang sudah diproses sepenuhnya ke frontend

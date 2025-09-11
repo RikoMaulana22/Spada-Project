@@ -16,7 +16,7 @@ import scheduleRoutes from './schedule.routes';
 import announcementRoutes from './announcement.routes';
 import settingRoutes from './setting.routes';
 import homeroomRoutes from './homeroom.routes';
-
+import questionBankRoutes from './questionBank.routes'; 
 
 
 
@@ -45,6 +45,7 @@ mainRouter.use('/submissions', authenticate, submissionRoutes); // <-- BARIS BAR
 mainRouter.use('/schedules', authenticate, scheduleRoutes); // <-- BARIS BARU
 mainRouter.use('/announcements', authenticate, announcementRoutes);
 mainRouter.use('/settings', settingRoutes);
+mainRouter.use('/question-bank', authenticate, questionBankRoutes);
 // Rute publik
 mainRouter.use('/auth', authRoutes);
 // Rute Wali Kelas

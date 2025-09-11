@@ -4,7 +4,9 @@ import {
     getSubmissionsForAssignment, 
     gradeSubmission, 
     getMyGrades,
-    getSubmissionReview
+    getSubmissionReview,
+    submitAssignment
+    
 } from '../controllers/submission.controller';
 import { authenticate } from '../middlewares/auth.middleware';
 import { checkRole } from '../middlewares/role.middleware';
@@ -24,7 +26,8 @@ router.get('/my-grades', authenticate, checkRole('siswa'), getMyGrades);
 
 // --- PERBAIKAN DI SINI ---
 // Ubah urutan path dari '/:id/review' menjadi '/review/:id'
-router.get('/review/:id', authenticate, checkRole('siswa'), getSubmissionReview);
+router.get('/submissions/review/:id', authenticate, checkRole('siswa'), getSubmissionReview);
+router.post('/submissions/assignment/:assignmentId', authenticate, checkRole('siswa'), submitAssignment);
 
 
 export default router;

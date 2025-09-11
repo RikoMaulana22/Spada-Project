@@ -5,6 +5,7 @@ import { useState, FormEvent, useEffect, useRef } from 'react';
 import apiClient from '@/lib/axios';
 import Modal from '@/components/ui/Modal';
 import toast from 'react-hot-toast';
+import { UploadCloud, X, File as FileIcon } from 'lucide-react'; // Menggunakan ikon untuk UX yang lebih baik
 
 interface AddMaterialModalProps {
   isOpen: boolean;
@@ -14,17 +15,14 @@ interface AddMaterialModalProps {
 }
 
 export default function AddMaterialModal({ isOpen, onClose, topicId, onMaterialAdded }: AddMaterialModalProps) {
-  // --- PERUBAHAN 1: Tambahkan state baru ---
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [youtubeUrl, setYoutubeUrl] = useState('');
   const [file, setFile] = useState<File | null>(null);
-  // ------------------------------------------
-  
   const [isLoading, setIsLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Reset semua state saat modal dibuka
+  // Reset semua state saat modal ditutup atau dibuka
   useEffect(() => {
     if (isOpen) {
       setTitle('');
@@ -32,42 +30,41 @@ export default function AddMaterialModal({ isOpen, onClose, topicId, onMaterialA
       setYoutubeUrl('');
       setFile(null);
       setIsLoading(false);
+      // Memastikan nilai input file juga di-reset
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
     }
   }, [isOpen]);
 
-  // --- PERUBAHAN 2: Logika submit yang lebih cerdas ---
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!title || !topicId) {
       toast.error('Judul materi wajib diisi.');
       return;
     }
-    // Pastikan setidaknya ada satu jenis konten yang diisi
     if (!content && !youtubeUrl && !file) {
-      toast.error('Harap isi konten, link YouTube, atau unggah file.');
+      toast.error('Harap isi setidaknya satu jenis konten (teks, link YouTube, atau file).');
       return;
     }
-    
+
     setIsLoading(true);
     const toastId = toast.loading('Menyimpan materi...');
 
     try {
-      // Jika ada file, kirim sebagai FormData. Jika tidak, kirim sebagai JSON biasa.
+      const formData = new FormData();
+      formData.append('title', title);
+      formData.append('content', content);
+      formData.append('youtubeUrl', youtubeUrl);
       if (file) {
-        const formData = new FormData();
-        formData.append('title', title);
-        formData.append('content', content);
-        formData.append('youtubeUrl', youtubeUrl);
         formData.append('file', file);
-
-        await apiClient.post(`/materials/topics/${topicId}`, formData, {
-          headers: { 'Content-Type': 'multipart/form-data' },
-        });
-      } else {
-        const payload = { title, content, youtubeUrl };
-        await apiClient.post(`/materials/topics/${topicId}`, payload);
       }
-      
+
+      // Selalu gunakan FormData untuk konsistensi, bahkan jika tidak ada file
+      await apiClient.post(`/materials/topics/${topicId}`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+
       toast.success('Materi berhasil ditambahkan!', { id: toastId });
       onMaterialAdded();
       onClose();
@@ -78,55 +75,117 @@ export default function AddMaterialModal({ isOpen, onClose, topicId, onMaterialA
     }
   };
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFile(e.target.files ? e.target.files[0] : null);
+  };
+
+  const removeFile = () => {
+    setFile(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  }
+
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Tambah Aktivitas: Materi Baru">
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label htmlFor="material-title" className="block text-sm font-medium text-gray-700">Judul Materi</label>
-          <input
-            type="text" id="material-title" value={title} onChange={(e) => setTitle(e.target.value)} required
-            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
-          />
-        </div>
-        
-        {/* --- PERUBAHAN 3: Tambahkan input field baru --- */}
-        <div>
-          <label htmlFor="material-content" className="block text-sm font-medium text-gray-700">Konten Teks (Opsional)</label>
-          <textarea
-            id="material-content"
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            rows={5}
-            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
-            placeholder="Ketik deskripsi atau materi singkat di sini..."
-          />
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="" // Hapus title bawaan
+      isFullScreen={true}
+    >
+      <div className="flex flex-col h-full bg-gray-50">
+        {/* Header */}
+        <div className="flex-shrink-0 bg-white border-b border-gray-200 p-6 text-center">
+          <h2 className="text-xl font-bold text-gray-900">Tambah Materi Baru</h2>
+          <p className="text-sm text-gray-500 mt-1">Isi detail materi yang ingin Anda bagikan kepada siswa.</p>
         </div>
 
-        <div>
-          <label htmlFor="material-youtube" className="block text-sm font-medium text-gray-700">Link Video YouTube (Opsional)</label>
-          <input
-            type="url" id="material-youtube" value={youtubeUrl} onChange={(e) => setYoutubeUrl(e.target.value)}
-            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
-            placeholder="youtu.be/...0..."
-          />
-        </div>
+        {/* Form Content (Scrollable) */}
+        <form onSubmit={handleSubmit} className="flex-grow overflow-y-auto">
+          <div className="max-w-4xl mx-auto p-8 space-y-8">
+            {/* --- Section: Informasi Dasar --- */}
+            <fieldset className="space-y-4">
+              <div className="border-b border-gray-200 pb-2">
+                <legend className="text-lg font-semibold text-gray-800">Informasi Dasar</legend>
+              </div>
+              <div>
+                <label htmlFor="material-title" className="block text-sm font-medium text-gray-700 mb-1">Judul Materi <span className="text-red-500">*</span></label>
+                <input
+                  type="text"
+                  id="material-title"
+                  required
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  className="w-full px-4 py-3 text-gray-800 bg-white border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                  placeholder="Contoh: Pengenalan Aljabar"
+                />
+              </div>
+            </fieldset>
 
-        <div>
-          <label htmlFor="material-file" className="block text-sm font-medium text-gray-700">Unggah File (Opsional)</label>
-          <input
-            type="file" id="material-file" ref={fileInputRef} onChange={(e) => setFile(e.target.files ? e.target.files[0] : null)}
-            className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-          />
-        </div>
-        {/* ------------------------------------------ */}
-        
-        <div className="flex justify-end gap-4 pt-4 border-t">
-          <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300">Batal</button>
-          <button type="submit" disabled={isLoading} className="px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 disabled:bg-blue-300">
-            {isLoading ? 'Menyimpan...' : 'Simpan Materi'}
-          </button>
-        </div>
-      </form>
+            {/* --- Section: Konten Materi --- */}
+            <fieldset className="space-y-4">
+              <div className="border-b border-gray-200 pb-2">
+                <legend className="text-lg font-semibold text-gray-800">Isi Materi</legend>
+                <p className="text-sm text-gray-500">Pilih salah satu atau kombinasikan beberapa jenis konten di bawah ini.</p>
+              </div>
+              <div>
+                <label htmlFor="material-content" className="block text-sm font-medium text-gray-700 mb-1">Konten Teks (Opsional)</label>
+                <textarea
+                  id="material-content" value={content} onChange={(e) => setContent(e.target.value)}
+                  rows={6} 
+                  className="w-full px-4 py-3 text-gray-800 bg-white border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                  placeholder="Ketik deskripsi atau materi singkat di sini..."
+                />
+              </div>
+
+              <div>
+                <label htmlFor="material-youtube" className="block text-sm font-medium text-gray-700 mb-1">Link Video YouTube (Opsional)</label>
+                <input
+                  type="url" id="material-youtube" value={youtubeUrl} onChange={(e) => setYoutubeUrl(e.target.value)}
+                  className="input-form" placeholder="https://www.youtube.com/watch?v=..."
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Unggah File (Opsional)</label>
+                {!file ? (
+                  <div
+                    onClick={() => fileInputRef.current?.click()}
+                    className="mt-1 flex justify-center rounded-lg border-2 border-dashed border-gray-300 px-6 py-10 hover:border-blue-500 cursor-pointer transition-colors"
+                  >
+                    <div className="text-center">
+                      <UploadCloud className="mx-auto h-12 w-12 text-gray-400" />
+                      <p className="mt-2 text-sm text-gray-600">
+                        <span className="font-semibold text-blue-600">Klik untuk mengunggah</span> atau seret dan lepas file
+                      </p>
+                      <p className="text-xs text-gray-500">PDF, DOCX, PPT, PNG, JPG, MP4, dll.</p>
+                    </div>
+                    <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" />
+                  </div>
+                ) : (
+                  <div className="mt-2 flex items-center justify-between rounded-lg border border-gray-300 bg-white p-3">
+                    <div className="flex items-center space-x-3">
+                      <FileIcon className="h-6 w-6 text-gray-500" />
+                      <span className="text-sm font-medium text-gray-800 truncate">{file.name}</span>
+                    </div>
+                    <button type="button" onClick={removeFile} className="p-1 text-gray-500 hover:text-red-600 rounded-full hover:bg-red-100">
+                      <X className="h-5 w-5" />
+                    </button>
+                  </div>
+                )}
+              </div>
+            </fieldset>
+          </div>
+
+          {/* Footer Aksi (Sticky) */}
+          <div className="flex-shrink-0 sticky bottom-0 bg-white border-t border-gray-200 p-4 flex justify-end gap-4">
+            <button type="button" onClick={onClose} className="btn-secondary">Batal</button>
+            <button type="submit" disabled={isLoading} className="btn-primary">
+              {isLoading ? 'Menyimpan...' : 'Simpan Materi'}
+            </button>
+          </div>
+        </form>
+      </div>
     </Modal>
   );
 }

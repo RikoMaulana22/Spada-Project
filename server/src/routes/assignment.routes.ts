@@ -3,13 +3,12 @@ import { Router } from 'express';
 // PERUBAHAN: Impor fungsi controller yang baru
 import { createAssignmentForTopic, getAssignmentsForTopic, getAssignmentById, 
         getMyAssignments, updateAssignment,getAssignmentSubmissions,gradeSubmission,
-        getSubmissionForReview, submitAssignment } from '../controllers/assignment.controller';
+         } from '../controllers/assignment.controller';
 import { checkRole } from '../middlewares/role.middleware';
 import { authenticate} from '../middlewares/auth.middleware';
 
 
 const router = Router();
-router.get('/submissions/review/:id', authenticate, getSubmissionForReview);
 
 router.get('/my', authenticate, getMyAssignments);
 router.get('/topic/:topicId', authenticate, getAssignmentsForTopic);
@@ -19,7 +18,6 @@ router.get('/:id/submissions', authenticate, checkRole('guru'), getAssignmentSub
 router.put('/submissions/:submissionId/grade', authenticate, checkRole('guru'), gradeSubmission);
 router.get('/:id', authenticate, getAssignmentById);
 
-router.post('/submissions/assignment/:assignmentId', authenticate, checkRole('siswa'), submitAssignment);
 
 
 export default router;

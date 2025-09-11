@@ -31,6 +31,13 @@ enum AssignmentType {
   link_google
 }
 
+// Enum baru untuk tingkat kesulitan soal
+enum Difficulty {
+  MUDAH
+  SEDANG
+  SULIT
+}
+
 enum NoteType {
   PELANGGARAN
   PRESTASI
@@ -73,7 +80,7 @@ model User {
   role                     Role
   nisn                     String?             @unique
   createdAt                DateTime            @default(now())
-  
+
   classesTaught            Class[]             @relation("TeacherClasses")
   memberships              Class_Members[]
   submissions              Submission[]
@@ -81,62 +88,61 @@ model User {
   announcements            Announcement[]
   schedulesAsTeacher       Schedule[]          @relation("TeacherSchedules")
   homeroomClasses          Class[]             @relation("HomeroomTeacher")
-  
+
   dailyAttendancesAsStudent  DailyAttendance[]   @relation("StudentDailyAttendance")
   dailyAttendancesRecorded DailyAttendance[]   @relation("RecorderDailyAttendance")
-  
+
   notesGiven               StudentNote[]       @relation("AuthoredNotes")
   notesAboutMe             StudentNote[]       @relation("StudentNotes")
-  
+
   lettersAboutMe           Letter[]            @relation("StudentLetters")
-  grades StudentGrade[]
+  grades                   StudentGrade[]
+  createdQuestions         QuestionBank[]      @relation("CreatedQuestions") // Relasi ke soal yang dibuat guru
 }
 
 model Announcement {
   id        Int      @id @default(autoincrement())
   title     String
   content   String   @db.Text
-  author    User     @relation(fields: [authorId], references: [id])
-  authorId  Int
+  author    User?    @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  authorId  Int?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
 model Subject {
-  id        Int        @id @default(autoincrement())
-  name      String
-  grade     Int
-  Class     Class[]
-  schedules Schedule[]
-  gradeComponents GradeComponent[]
-
+  id                Int              @id @default(autoincrement())
+  name              String
+  grade             Int
+  Class             Class[]
+  schedules         Schedule[]
+  gradeComponents   GradeComponent[]
+  questions         QuestionBank[] // Relasi ke soal di gudang soal
 }
 
 model Class {
   id                Int             @id @default(autoincrement())
   name              String
   description       String?
-  imageUrl          String? 
+  imageUrl          String?
   createdAt         DateTime        @default(now())
-  
-  teacher           User            @relation("TeacherClasses", fields: [teacherId], references: [id])
-  teacherId         Int
-  
+
+  teacher           User?           @relation("TeacherClasses", fields: [teacherId], references: [id], onDelete: SetNull)
+  teacherId         Int?
+
   subject           Subject         @relation(fields: [subjectId], references: [id])
   subjectId         Int
-  
+
   homeroomTeacher   User?           @relation("HomeroomTeacher", fields: [homeroomTeacherId], references: [id])
   homeroomTeacherId Int?
-
   members           Class_Members[]
   topics            Topic[]
   schedules         Schedule[]
   studentNotes      StudentNote[]
   letters           Letter[]
   dailyAttendances  DailyAttendance[]
-  gradeComponents GradeComponent[]
-
+  gradeComponents   GradeComponent[]
 }
 
 model StudentNote {
@@ -144,13 +150,13 @@ model StudentNote {
   type      NoteType
   content   String   @db.Text
   date      DateTime @default(now())
-  
+
   student   User     @relation("StudentNotes", fields: [studentId], references: [id])
   studentId Int
-  
+
   class     Class    @relation(fields: [classId], references: [id])
   classId   Int
-  
+
   author    User     @relation("AuthoredNotes", fields: [authorId], references: [id])
   authorId  Int
 }
@@ -161,10 +167,10 @@ model Letter {
   date      DateTime   @default(now())
   content   String     @db.Text
   status    String
-  
-  student   User?       @relation("StudentLetters", fields: [studentId], references: [id])
+
+  student   User?      @relation("StudentLetters", fields: [studentId], references: [id], onDelete: SetNull)
   studentId Int?
-  
+
   class     Class      @relation(fields: [classId], references: [id])
   classId   Int
 }
@@ -178,52 +184,45 @@ model Class_Members {
   @@id([studentId, classId])
 }
 
-// --- FIX: Model Attendance yang berhubungan dengan e-learning (Topik) ---
 model Attendance {
   id        Int                @id @default(autoincrement())
   title     String
   openTime  DateTime
   closeTime DateTime
-  
+
   topic     Topic              @relation(fields: [topicId], references: [id], onDelete: Cascade)
   topicId   Int                @unique
   records   AttendanceRecord[]
- 
 }
 
-// --- FIX: Model BARU untuk Absensi Harian oleh Wali Kelas ---
 model DailyAttendance {
   id           Int                 @id @default(autoincrement())
   date         DateTime            @db.Date
   status       DailyAttendanceStatus
   notes        String?
-
   student      User                @relation("StudentDailyAttendance", fields: [studentId], references: [id], onDelete: Cascade)
   studentId    Int
-  
+
   class        Class               @relation(fields: [classId], references: [id], onDelete: Cascade)
   classId      Int
 
   recordedBy   User                @relation("RecorderDailyAttendance", fields: [recordedById], references: [id], onDelete: Cascade)
   recordedById Int
-  proofUrl  String?  // Opsional
-
+  proofUrl     String?
 
   @@unique([date, studentId, classId])
 }
 
 model AttendanceRecord {
-  id           Int        @id @default(autoincrement())
-  timestamp    DateTime   @default(now())
+  id           Int                 @id @default(autoincrement())
+  timestamp    DateTime            @default(now())
   notes        String?
-  status       DailyAttendanceStatus // Menggunakan ENUM yang sudah ada
+  status       DailyAttendanceStatus
   proofUrl     String?
-
-  
-  student      User       @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  student      User                @relation(fields: [studentId], references: [id], onDelete: Cascade)
   studentId    Int
-  
-  attendance   Attendance @relation(fields: [attendanceId], references: [id], onDelete: Cascade)
+
+  attendance   Attendance          @relation(fields: [attendanceId], references: [id], onDelete: Cascade)
   attendanceId Int
 
   @@unique([studentId, attendanceId])
@@ -234,10 +233,10 @@ model Topic {
   title       String
   order       Int
   createdAt   DateTime     @default(now())
-  
+
   class       Class        @relation(fields: [classId], references: [id], onDelete: Cascade)
   classId     Int
-  
+
   attendance  Attendance?
   materials   Material[]
   assignments Assignment[]
@@ -250,7 +249,7 @@ model Material {
   content    String?
   youtubeUrl String?
   createdAt  DateTime @default(now())
-  
+
   topic      Topic?   @relation(fields: [topicId], references: [id], onDelete: SetNull)
   topicId    Int?
 }
@@ -263,10 +262,10 @@ model Assignment {
   dueDate      DateTime
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt
-  
+
   topic        Topic?         @relation(fields: [topicId], references: [id], onDelete: SetNull)
   topicId      Int?
-  
+
   externalUrl  String?        @db.Text
   startTime    DateTime?
   endTime      DateTime?
@@ -274,29 +273,54 @@ model Assignment {
   attemptLimit Int?           @default(1)
   passingGrade Int?           @default(70)
   
-  questions    Question[]
+  // PERUBAHAN: Relasi ke QuestionBank melalui tabel penghubung
+  questions    AssignmentQuestion[]
   submissions  Submission[]
 }
 
-model Question {
-  id           Int        @id @default(autoincrement())
-  questionText String     @db.Text
+// --- MODEL BARU UNTUK GUDANG SOAL ---
+model QuestionBank {
+  id             Int              @id @default(autoincrement())
+  questionText   String           @db.Text
+  type           AssignmentType
+  difficulty     Difficulty       @default(SEDANG)
+  mediaUrl       String?          // Untuk link gambar, audio, atau video
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  subject        Subject          @relation(fields: [subjectId], references: [id])
+  subjectId      Int
+  teacher        User             @relation("CreatedQuestions", fields: [teacherId], references: [id])
+  teacherId      Int
+
+  options        QuestionOption[] // Opsi jawaban untuk soal pilihan ganda
+  assignments    AssignmentQuestion[]
   
-  assignment   Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
-  assignmentId Int
-  
-  options      Option[]
 }
 
-model Option {
-  id         Int     @id @default(autoincrement())
-  optionText String
-  isCorrect  Boolean @default(false)
-  explanation  String?
-  
-  question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
-  questionId Int
+// Model baru untuk Opsi Jawaban di Gudang Soal
+model QuestionOption {
+  id             Int          @id @default(autoincrement())
+  optionText     String
+  isCorrect      Boolean      @default(false)
+  explanation    String?
+
+  question       QuestionBank @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  questionId     Int
 }
+
+// Tabel penghubung antara Assignment dan QuestionBank
+model AssignmentQuestion {
+  assignment     Assignment   @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  assignmentId   Int
+  question       QuestionBank @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  questionId     Int
+  order          Int          // Urutan soal dalam tugas
+
+  @@id([assignmentId, questionId])
+}
+
+// Model Question dan Option yang lama sudah DIHAPUS
 
 model Submission {
   id              Int        @id @default(autoincrement())
@@ -304,21 +328,19 @@ model Submission {
   score           Float?
   essayAnswer     String?    @db.Text
   fileUrl         String?
-  
   student         User       @relation(fields: [studentId], references: [id], onDelete: Cascade)
   studentId       Int
   
   assignment      Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
   assignmentId    Int
 
-  updatedAt       DateTime @updatedAt // <-- TAMBAHKAN BARIS INI
+  updatedAt       DateTime   @updatedAt
   
   selectedOptions Json?
-  startedOn     DateTime? // Kapan siswa mulai mengerjakan
-  completedOn   DateTime? // Kapan siswa selesai (mengklik tombol kumpul)
-  timeTakenMs   Int?     // Waktu pengerjaan dalam milidetik
+  startedOn       DateTime?
+  completedOn     DateTime?
+  timeTakenMs     Int?
 
-  @@unique([studentId, assignmentId]) // Opsional, tapi disarankan agar 1 siswa hanya bisa submit 1 kali per tugas
 }
 
 model Schedule {
@@ -326,21 +348,20 @@ model Schedule {
   dayOfWeek DayOfWeek
   startTime String
   endTime   String
-  
+
   class     Class     @relation(fields: [classId], references: [id], onDelete: Cascade)
   classId   Int
-  
+
   subject   Subject   @relation(fields: [subjectId], references: [id], onDelete: Cascade)
   subjectId Int
-  
+
   teacher   User      @relation("TeacherSchedules", fields: [teacherId], references: [id], onDelete: Cascade)
   teacherId Int
 }
 
-// --- MODEL BARU UNTUK KOMPONEN PENILAIAN ---
 model GradeComponent {
   id        Int      @id @default(autoincrement())
-  name      String   // Contoh: "Ulangan Harian 1", "UTS Ganjil", "Tugas Praktik"
+  name      String
   maxScore  Int      @default(100)
   date      DateTime @default(now())
 
@@ -350,14 +371,12 @@ model GradeComponent {
   subject   Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
   subjectId Int
 
-  // Satu komponen nilai akan memiliki banyak entri nilai dari siswa
   grades    StudentGrade[]
 }
 
-// --- MODEL BARU UNTUK NILAI SISWA ---
 model StudentGrade {
   id        Int   @id @default(autoincrement())
-  score     Float // Nilai yang didapat siswa
+  score     Float
 
   student   User  @relation(fields: [studentId], references: [id], onDelete: Cascade)
   studentId Int
@@ -365,6 +384,5 @@ model StudentGrade {
   component GradeComponent @relation(fields: [gradeComponentId], references: [id], onDelete: Cascade)
   gradeComponentId Int
 
-  // Siswa hanya bisa punya 1 nilai untuk 1 komponen
   @@unique([studentId, gradeComponentId])
 }

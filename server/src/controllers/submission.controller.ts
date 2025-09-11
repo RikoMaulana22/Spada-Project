@@ -5,34 +5,80 @@ import { AuthRequest } from '../middlewares/auth.middleware';
 
 const prisma = new PrismaClient();
 
+export const submitAssignment = async (req: AuthRequest, res: Response) => {
+    const { assignmentId } = req.params;
+    const studentId = req.user?.userId;
+    const { answers, essayAnswer, startedOn, timeTakenMs } = req.body;
+
+    if (!studentId) return res.status(401).json({ message: "Otentikasi gagal." });
+
+    try {
+        const assignment = await prisma.assignment.findUnique({
+            where: { id: Number(assignmentId) },
+            // PERBAIKAN: Query disesuaikan agar `topic` dan `questions` dikenali
+            include: {
+                topic: { select: { classId: true } },
+                questions: {
+                    include: {
+                        question: { // <-- Harus melalui `question`
+                            include: {
+                                options: true // <-- Untuk mendapatkan `options`
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        if (!assignment) return res.status(404).json({ message: "Tugas tidak ditemukan." });
+        if (!assignment.topic) return res.status(400).json({ message: "Tugas ini tidak terhubung ke topik." });
+        
+        // ... (Logika studentEnrollment tidak berubah) ...
+
+        let score = null;
+        if (assignment.type === 'pilgan' && answers) {
+            let correctCount = 0;
+            // PERBAIKAN: Cara mengakses data disesuaikan dengan struktur query baru
+            assignment.questions.forEach(aq => { // aq adalah AssignmentQuestion
+                const question = aq.question; // question adalah QuestionBank
+                const correctOption = question.options.find(opt => opt.isCorrect); // opt sekarang punya tipe
+                if (correctOption && (answers as any)[question.id] === correctOption.id) {
+                    correctCount++;
+                }
+            });
+            score = (correctCount / assignment.questions.length) * 100;
+        }
+
+        const newSubmission = await prisma.submission.create({
+            data: {
+                studentId, assignmentId: Number(assignmentId), score,
+                essayAnswer: assignment.type === 'esai' ? essayAnswer : null,
+                selectedOptions: assignment.type === 'pilgan' ? answers : {},
+                startedOn: new Date(startedOn), completedOn: new Date(), timeTakenMs: Number(timeTakenMs),
+            }
+        });
+        res.status(201).json({ message: "Jawaban Anda berhasil dikumpulkan!", submission: newSubmission });
+    } catch (error) {
+        console.error("Gagal saat memproses pengumpulan tugas:", error);
+        res.status(500).json({ message: "Terjadi kesalahan saat memproses jawaban Anda." });
+    }
+};
 
 export const getSubmissionReview = async (req: AuthRequest, res: Response): Promise<void> => {
     const { id: submissionId } = req.params;
     const userId = req.user?.userId;
-
     try {
         const submission = await prisma.submission.findUnique({
             where: { id: Number(submissionId) },
-            select: {
-                id: true,
-                score: true,
-                selectedOptions: true,
-                submissionDate: true, // Akan digunakan sebagai startedOn
-                updatedAt: true,      // Akan digunakan sebagai completedOn
-                studentId: true,
+            include: {
                 assignment: {
-                    select: {
-                        title: true,
-                        questions: {
-                            select: {
-                                id: true,
-                                questionText: true,
-                                options: {
-                                    select: {
-                                        id: true,
-                                        optionText: true,
-                                        isCorrect: true,
-                                        explanation: true, // <-- PERBAIKAN DI SINI
+                    include: {
+                        questions: { // Ambil join table AssignmentQuestion
+                            orderBy: { order: 'asc' },
+                            include: {
+                                question: { // Dari join table, ambil data QuestionBank
+                                    include: {
+                                        options: true // Dari QuestionBank, ambil semua options
                                     }
                                 }
                             }
@@ -46,25 +92,7 @@ export const getSubmissionReview = async (req: AuthRequest, res: Response): Prom
             res.status(404).json({ message: "Data pengerjaan tidak ditemukan." });
             return;
         }
-
-        // Transformasi data agar sesuai dengan yang diharapkan frontend
-        const startedOn = submission.submissionDate;
-        const completedOn = submission.updatedAt;
-        const timeTakenMs = completedOn.getTime() - startedOn.getTime();
-        
-        const responseData = {
-            ...submission,
-            startedOn,
-            completedOn,
-            timeTakenMs
-        };
-
-        // Hapus field yang tidak lagi diperlukan agar output bersih
-        delete (responseData as any).submissionDate;
-        delete (responseData as any).updatedAt;
-        delete (responseData as any).studentId;
-
-        res.status(200).json(responseData);
+        res.status(200).json(submission);
     } catch (error) {
         console.error("Gagal mengambil data review:", error);
         res.status(500).json({ message: "Gagal mengambil data review." });
@@ -81,15 +109,21 @@ export const createSubmission = async (req: AuthRequest, res: Response): Promise
         res.status(401).json({ message: 'Otentikasi diperlukan.' });
         return;
     }
-    if (!answers && !essayAnswer) {
-        res.status(400).json({ message: 'Jawaban tidak boleh kosong.' });
-        return;
-    }
 
     try {
         const assignment = await prisma.assignment.findUnique({
             where: { id: Number(assignmentId) },
-            include: { questions: { include: { options: true } } },
+            include: {
+                questions: { // Ambil join table AssignmentQuestion
+                    include: {
+                        question: { // Dari join table, ambil data QuestionBank
+                            include: {
+                                options: true // Dari QuestionBank, ambil semua options
+                            }
+                        }
+                    }
+                }
+            },
         });
 
         if (!assignment) {
@@ -114,10 +148,11 @@ export const createSubmission = async (req: AuthRequest, res: Response): Promise
             let correctAnswers = 0;
             const totalQuestions = assignment.questions.length;
 
-            // PERBAIKAN 1: Pastikan 'answers' adalah objek sebelum di-loop
             if (answers && typeof answers === 'object') {
-                for (const question of assignment.questions) {
-                    const studentAnswerOptionId = answers[question.id];
+                // PERBAIKAN: Cara mengakses data disesuaikan dengan struktur query baru
+                for (const aq of assignment.questions) { // aq adalah AssignmentQuestion
+                    const question = aq.question; // question adalah QuestionBank
+                    const studentAnswerOptionId = (answers as any)[question.id];
                     const correctOption = question.options.find(opt => opt.isCorrect);
                     
                     if (studentAnswerOptionId !== undefined && correctOption && correctOption.id === studentAnswerOptionId) {
@@ -125,7 +160,6 @@ export const createSubmission = async (req: AuthRequest, res: Response): Promise
                     }
                 }
             }
-            // PERBAIKAN 2: Pastikan hasil skor memiliki maksimal 2 angka desimal
             finalScore = totalQuestions > 0 ? parseFloat(((correctAnswers / totalQuestions) * 100).toFixed(2)) : 0;
         }
 
@@ -140,7 +174,6 @@ export const createSubmission = async (req: AuthRequest, res: Response): Promise
         });
 
         res.status(201).json({ message: "Jawaban berhasil dikumpulkan!", submissionId: submission.id });
-
     } catch (error: any) {
         console.error("Gagal mengumpulkan jawaban:", error);
         res.status(500).json({ message: 'Terjadi kesalahan pada server.' });
