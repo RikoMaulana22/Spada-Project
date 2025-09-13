@@ -34,7 +34,6 @@ export const bulkCreateUsers = async (req: Request, res: Response) => {
         return res.status(400).json({ message: 'File CSV tidak ditemukan.' });
     }
 
-
     const { role } = req.body;
     if (!['guru', 'siswa', 'wali_kelas'].includes(role)) {
         return res.status(400).json({ message: 'Peran (role) yang dipilih tidak valid.' });
@@ -42,41 +41,45 @@ export const bulkCreateUsers = async (req: Request, res: Response) => {
 
     const filePath = req.file.path;
 
-    
     try {
         const fileContent = fs.readFileSync(filePath, 'utf8');
 
-        // --- PERBAIKAN 1: PROSES PARSING DIJADIKAN PROMISE AGAR BISA DI-AWAIT ---
+        // --- Konfigurasi Parser CSV yang Kuat ---
         const usersToProcess = await new Promise<any[]>((resolve, reject) => {
-            const users: any[] = [];
             Papa.parse(fileContent, {
                 header: true,
                 skipEmptyLines: true,
-                step: (result) => {
-                    const row = result.data as any;
+                delimiter: ",", // KUNCI: Memaksa penggunaan koma sebagai pemisah
+                transformHeader: header => header.trim(), // Membersihkan spasi ekstra dari header
 
-                    // --- PERBAIKAN 2: VALIDASI DATA PER BARIS ---
-                    if (!row.username || !row.password || !row.fullName || !row.email) {
-                        // Jika ada data penting yang kosong, lewati baris ini dan beri peringatan
-                        console.warn('[CSV Import] Melewatkan baris karena data tidak lengkap:', row);
-                        return;
+                complete: (results) => {
+                    // Cek jika ada error saat parsing (misal: jumlah kolom tidak konsisten)
+                    if (results.errors.length > 0) {
+                        console.error("Kesalahan parsing CSV:", results.errors);
+                        return reject(new Error("Format file CSV tidak valid. Pastikan setiap baris memiliki jumlah kolom yang sama."));
                     }
-                    users.push(row);
-                },
-                complete: () => {
-                    resolve(users);
+
+                    // Filter hanya baris yang memiliki data wajib
+                    const validUsers = results.data.filter((row: any) => {
+                        const hasRequiredFields = row.username && row.password && row.fullName && row.email;
+                        if (!hasRequiredFields) {
+                            console.warn('[CSV Import] Melewatkan baris karena data wajib (username, password, fullName, email) tidak lengkap:', row);
+                        }
+                        return hasRequiredFields;
+                    });
+                    resolve(validUsers);
                 },
                 error: (error: any) => {
-                    reject(error);
+                    reject(new Error(`Gagal mem-parsing file CSV: ${error.message}`));
                 }
             });
         });
 
         if (usersToProcess.length === 0) {
-            return res.status(400).json({ message: 'Tidak ada data valid yang dapat diproses dari file CSV.' });
+            return res.status(400).json({ message: 'Tidak ada data valid yang dapat diproses dari file CSV. Periksa kembali isi file Anda.' });
         }
 
-        // --- PERBAIKAN 3: PROSES DATABASE DIPISAHKAN DARI PARSING ---
+        // Proses transaksi ke database
         await prisma.$transaction(async (tx) => {
             for (const row of usersToProcess) {
                 const hashedPassword = await bcrypt.hash(row.password, 10);
@@ -89,13 +92,21 @@ export const bulkCreateUsers = async (req: Request, res: Response) => {
                     role: role,
                 };
 
+                // Validasi data spesifik berdasarkan peran
                 if (role === 'siswa') {
-                    userData.nisn = row.nisn || null;
+                    if (!row.nisn) {
+                        throw new Error(`NISN wajib diisi untuk siswa. Kesalahan pada pengguna: ${row.username}`);
+                    }
+                    userData.nisn = row.nisn;
                 }
                 
-                const newUser = await tx.user.create({
-                    data: userData
-                });
+                if (role === 'wali_kelas') {
+                    if (!row.homeroomClassId) {
+                        throw new Error(`homeroomClassId wajib diisi untuk wali kelas. Kesalahan pada pengguna: ${row.username}`);
+                    }
+                }
+
+                const newUser = await tx.user.create({ data: userData });
 
                 if (role === 'wali_kelas' && row.homeroomClassId) {
                     await tx.class.update({
@@ -109,14 +120,11 @@ export const bulkCreateUsers = async (req: Request, res: Response) => {
         res.status(201).json({ message: `${usersToProcess.length} akun ${role} berhasil dibuat.` });
 
     } catch (error: any) {
-        // --- PERBAIKAN 4: ERROR HANDLING YANG LEBIH BAIK ---
         let errorMessage = 'Gagal memproses permintaan Anda.';
-        // Tangani error duplikasi dari Prisma
-        if (error.code === 'P2002') {
-            const fields = error.meta?.target.join(', ');
-            errorMessage = `Gagal menyimpan data. Terdapat duplikasi pada kolom: ${fields}. Pastikan username dan email unik.`;
+        if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+            const fields = (error.meta?.target as string[]).join(', ');
+            errorMessage = `Gagal menyimpan data. Terdapat duplikasi pada kolom: ${fields}. Pastikan data unik.`;
         } else if (error.message) {
-            // Tangani error lain, misalnya dari parsing atau validasi
             errorMessage = error.message;
         }
         
@@ -124,8 +132,6 @@ export const bulkCreateUsers = async (req: Request, res: Response) => {
         res.status(500).json({ message: errorMessage });
 
     } finally {
-        // --- PERBAIKAN 5: PASTIKAN FILE SELALU DIHAPUS ---
-        // Selalu hapus file sementara baik proses berhasil maupun gagal
         fs.unlinkSync(filePath);
     }
 };

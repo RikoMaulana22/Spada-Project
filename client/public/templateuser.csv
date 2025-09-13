@@ -1,0 +1,4 @@
+﻿fullName,username,email,password,role,nisn,homeroomClassId
+Budi Santoso (Siswa),budi.siswa,budi.s@sekolah.id,PasswordSiswa1,siswa,1234567890,
+Andi Wijaya (Guru),andi.guru,andi.w@sekolah.id,PasswordGuru1,guru,22312212,
+Dewi Anggraini (Wali Kelas),dewi.wali,dewi.a@sekolah.id,PasswordWali1,wali_kelas,1222112211,
