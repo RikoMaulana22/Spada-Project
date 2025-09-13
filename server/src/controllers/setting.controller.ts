@@ -1,44 +1,66 @@
-// Path: src/controllers/setting.controller.ts
-import { Request, Response,  } from 'express'; // <-- PERBAIKAN: Pastikan 'Request' diimpor
+import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
-import { AuthRequest } from '../middlewares/auth.middleware';
+import fs from 'fs';
+import path from 'path';
 
 const prisma = new PrismaClient();
 
-// Mengambil semua pengaturan untuk ditampilkan di aplikasi
-export const getSettings = async (req: Request, res: Response): Promise<void> => {
+const upsertSetting = async (key: string, value: string) => {
+    return prisma.setting.upsert({
+        where: { key },
+        update: { value },
+        create: { key, value },
+    });
+};
+
+export const getSettings = async (req: Request, res: Response) => {
     try {
-        const settingsArray = await prisma.setting.findMany();
-        // Ubah dari array ke objek agar mudah digunakan di frontend
-        const settingsObject = settingsArray.reduce((acc, setting) => {
+        const settings = await prisma.setting.findMany();
+        const settingsObject = settings.reduce((acc, setting) => {
             acc[setting.key] = setting.value;
             return acc;
-        }, {} as Record<string, string>);
-
+        }, {} as { [key: string]: string });
         res.status(200).json(settingsObject);
     } catch (error) {
-        res.status(500).json({ message: 'Gagal mengambil pengaturan.' });
+        res.status(500).json({ message: "Gagal mengambil pengaturan." });
     }
 };
 
-// Admin memperbarui pengaturan
-export const updateSettings = async (req: AuthRequest, res: Response): Promise<void> => {
-    const settingsToUpdate: Record<string, string> = req.body;
+export const updateSettings = async (req: Request, res: Response) => {
+    // Ambil semua field teks dari req.body
+    const textFields = ['schoolName', 'homeHeroTitle', 'homeHeroSubtitle', 'schoolProfile'];
+    const files = req.files as { [fieldname: string]: Express.Multer.File[] };
 
     try {
-        const updatePromises = Object.keys(settingsToUpdate).map(key => {
-            return prisma.setting.upsert({
-                where: { key },
-                update: { value: settingsToUpdate[key] },
-                create: { key, value: settingsToUpdate[key] },
-            });
-        });
+        // 1. Proses semua pengaturan teks
+        for (const field of textFields) {
+            if (req.body[field] !== undefined) {
+                await upsertSetting(field, req.body[field]);
+            }
+        }
 
-        await Promise.all(updatePromises);
-        res.status(200).json({ message: 'Pengaturan berhasil diperbarui.' });
+        // 2. Proses semua file yang diunggah
+        const fileFields = ['headerLogo', 'loginLogo', 'homeHeroImage'];
+        for (const field of fileFields) {
+            if (files && files[field] && files[field][0]) {
+                const newFile = files[field][0];
+                const newFilePath = `/uploads/settings/${newFile.filename}`;
 
+                const oldSetting = await prisma.setting.findUnique({ where: { key: field } });
+                if (oldSetting && oldSetting.value) {
+                    const oldFilePath = path.join(__dirname, `../../public`, oldSetting.value);
+                    if (fs.existsSync(oldFilePath)) {
+                        fs.unlinkSync(oldFilePath);
+                    }
+                }
+                
+                await upsertSetting(field, newFilePath);
+            }
+        }
+
+        res.status(200).json({ message: 'Pengaturan berhasil disimpan.' });
     } catch (error) {
-        console.error("Gagal memperbarui pengaturan:", error);
-        res.status(500).json({ message: 'Gagal memperbarui pengaturan.' });
+        console.error("Gagal menyimpan pengaturan:", error);
+        res.status(500).json({ message: 'Gagal menyimpan pengaturan.' });
     }
 };

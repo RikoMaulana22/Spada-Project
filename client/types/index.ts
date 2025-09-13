@@ -5,7 +5,7 @@ export interface User {
   id: number;
   fullName: string;
   username: string; // <-- Ini properti yang hilang
-  role: 'guru' | 'siswa'| 'admin';
+  role: 'guru' | 'siswa' | 'admin';
   email: string;
   createdAt?: string;
   nisn?: string | null; // Dibuat opsional karena tidak semua user punya
@@ -14,9 +14,12 @@ export interface User {
 }
 export interface Settings {
   schoolName?: string;
-  // Di masa depan, Anda bisa menambahkan pengaturan lain di sini
-  // contoh: academicYear?: string;
-  // contoh: appLogo?: string;
+  headerLogo?: string;
+  loginLogo?: string;
+  homeHeroTitle?: string;      
+  homeHeroSubtitle?: string;
+  homeHeroImage?: string;
+  schoolProfile?: string;
 }
 
 export interface ClassInfo {
@@ -28,15 +31,15 @@ export interface Subject {
   id: number;
   name: string;
   grade: number;
-  Class: ClassInfo[]; 
+  Class: ClassInfo[];
 }
 
 export interface ClassSummary {
   id: number;
   name: string;
   description: string | null;
-  imageUrl?: string | null; 
- subject: {
+  imageUrl?: string | null;
+  subject: {
     name: string;
   };
   // --- TAMBAHKAN PROPERTI INI ---
@@ -61,7 +64,7 @@ export interface AssignmentInfo {
   title: string;
   type: string;
   dueDate: string;
-  
+
 }
 
 export interface AssignmentDetails {

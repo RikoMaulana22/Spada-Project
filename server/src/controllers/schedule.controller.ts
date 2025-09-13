@@ -51,31 +51,30 @@ export const getSchedulesByClass = async (req: AuthRequest, res: Response): Prom
 export const getPublicSchedules = async (req: Request, res: Response) => {
     try {
         const schedules = await prisma.schedule.findMany({
-            // Ambil juga data relasinya
+            orderBy: [
+                { class: { name: 'asc' } },
+                { startTime: 'asc' }
+            ],
             include: {
                 class: { select: { name: true } },
                 subject: { select: { name: true } },
-                teacher: { select: { fullName: true } }
-            },
-            // Urutkan berdasarkan hari lalu jam mulai
-            orderBy: [
-                { dayOfWeek: 'asc' },
-                { startTime: 'asc' }
-            ]
+                teacher: { select: { fullName: true } },
+            }
         });
 
-        // Kelompokkan jadwal berdasarkan hari
-        const groupedSchedules = schedules.reduce((acc, schedule) => {
+        // Mengelompokkan jadwal berdasarkan hari
+        const groupedByDay = schedules.reduce((acc, schedule) => {
             const day = schedule.dayOfWeek;
             if (!acc[day]) {
                 acc[day] = [];
             }
             acc[day].push(schedule);
             return acc;
-        }, {} as Record<string, typeof schedules>);
+        }, {} as { [key: string]: typeof schedules });
 
-        res.json(groupedSchedules);
+        res.status(200).json(groupedByDay);
     } catch (error) {
+        console.error("Gagal mengambil jadwal publik:", error);
         res.status(500).json({ message: "Gagal mengambil data jadwal." });
     }
 };

@@ -1,4 +1,3 @@
-// Path: src/contexts/AuthContext.tsx
 'use client';
 
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
@@ -6,22 +5,21 @@ import { jwtDecode } from 'jwt-decode';
 import apiClient from '@/lib/axios';
 import { Settings, User } from '@/types';
 
-// Tipe untuk data yang didekode dari token JWT
 interface DecodedToken {
   userId: number;
   exp: number;
 }
 
-// Tipe untuk context, dengan penambahan baru
 interface AuthContextType {
   user: User | null;
   token: string | null;
   settings: Settings | null;
-  isAuthenticated: boolean; // <-- PENAMBAHAN 1: Flag untuk status login
+  isAuthenticated: boolean;
   isLoading: boolean;
   login: (token: string, userData: User) => void;
   logout: () => void;
-  revalidateUser: () => Promise<void>; // <-- PENAMBAHAN 2: Fungsi untuk refresh data user
+  revalidateUser: () => Promise<void>;
+  refetchSettings: () => Promise<void>; // <-- PENAMBAHAN FUNGSI BARU
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -32,8 +30,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // --- PENAMBAHAN 3: Interceptor API Otomatis ---
-  // Efek ini akan berjalan setiap kali token berubah untuk mengatur header default pada apiClient
   useEffect(() => {
     if (token) {
       apiClient.defaults.headers.common['Authorization'] = `Bearer ${token}`;
@@ -41,44 +37,50 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       delete apiClient.defaults.headers.common['Authorization'];
     }
   }, [token]);
+  
+  // Fungsi untuk mengambil data settings
+  const refetchSettings = useCallback(async () => {
+    try {
+      const settingsResponse = await apiClient.get('/settings');
+      setSettings(settingsResponse.data);
+    } catch (error) {
+      console.error("Gagal mengambil pengaturan sistem:", error);
+    }
+  }, []);
 
-  // --- PENAMBAHAN 4: Fungsi untuk memvalidasi ulang data pengguna dari server ---
+  const logout = useCallback(() => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    setToken(null);
+    setUser(null);
+  }, []);
+
   const revalidateUser = useCallback(async () => {
     try {
-      const response = await apiClient.get('/auth/me'); // Endpoint untuk mengambil data user
+      const response = await apiClient.get('/auth/me');
       const freshUserData = response.data;
       setUser(freshUserData);
       localStorage.setItem('user', JSON.stringify(freshUserData));
     } catch (error) {
       console.error("Gagal memvalidasi ulang sesi, logout...", error);
-      logout(); // Jika gagal (misal token dicabut), logout paksa
+      logout();
     }
-  }, []);
+  }, [logout]);
 
-  // Inisialisasi aplikasi saat pertama kali dimuat
   useEffect(() => {
     const initializeApp = async () => {
       setIsLoading(true);
+      await refetchSettings(); // Panggil fungsi fetch settings
       
-      // Ambil pengaturan sistem
-      try {
-        const settingsResponse = await apiClient.get('/settings');
-        setSettings(settingsResponse.data);
-      } catch (error) {
-        console.error("Gagal mengambil pengaturan sistem:", error);
-      }
-
-      // Cek token di localStorage
       const storedToken = localStorage.getItem('token');
       if (storedToken) {
         try {
           const decodedToken: DecodedToken = jwtDecode(storedToken);
           if (decodedToken.exp * 1000 > Date.now()) {
             setToken(storedToken);
-            // Alih-alih langsung percaya localStorage, validasi ulang data user
             await revalidateUser();
           } else {
-            logout(); // Token kedaluwarsa
+            logout();
           }
         } catch (error) {
           console.error("Token tidak valid:", error);
@@ -89,7 +91,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     };
 
     initializeApp();
-  }, [revalidateUser]); // Tambahkan revalidateUser sebagai dependensi
+  }, [revalidateUser, refetchSettings, logout]);
 
   const login = (newToken: string, userData: User) => {
     localStorage.setItem('token', newToken);
@@ -98,23 +100,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setUser(userData);
   };
 
-  const logout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    setToken(null);
-    setUser(null);
-  };
-
   return (
     <AuthContext.Provider value={{
       user,
       token,
       settings,
       isLoading,
-      isAuthenticated: !!user, // <-- Flag disediakan di sini
+      isAuthenticated: !!user,
       login,
       logout,
-      revalidateUser // <-- Fungsi disediakan di sini
+      revalidateUser,
+      refetchSettings
     }}>
       {children}
     </AuthContext.Provider>

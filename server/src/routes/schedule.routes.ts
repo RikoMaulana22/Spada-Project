@@ -5,7 +5,7 @@ import {
     getMySchedule, 
     deleteSchedule, 
     updateSchedule,
-    getPublicSchedules 
+    getPublicSchedules, 
 } from '../controllers/schedule.controller';
 import { authenticate } from '../middlewares/auth.middleware'; 
 import { checkRole } from '../middlewares/role.middleware';
