@@ -92,7 +92,7 @@ export default function ProfilePage() {
               type="text"
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
-              className="form-input mt-1 w-full"
+              className="form-input mt-1 w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
               required
             />
           </div>
@@ -102,7 +102,7 @@ export default function ProfilePage() {
               type="email"
               value={email}
               disabled // Email biasanya tidak bisa diubah
-              className="form-input mt-1 w-full bg-gray-100 cursor-not-allowed"
+              className="form-input mt-1 w-full bg-gray-100 cursor-not-allowed py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
             />
           </div>
           <div className="flex justify-end">
@@ -127,17 +127,17 @@ export default function ProfilePage() {
               type="password"
               value={currentPassword}
               onChange={(e) => setCurrentPassword(e.target.value)}
-              className="form-input border mt-1 w-full"
+              className="form-input border mt-1 w-full py-2 px-3 rounded-md shadow-sm focus:outline-none focus:border-blue-500"
               required
             />
           </div>
           <div>
-            <label className="block text-sm border font-medium text-gray-600">Password Baru</label>
+            <label className="block text-sm  font-medium text-gray-600">Password Baru</label>
             <input
               type="password"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
-              className="form-input border mt-1 w-full"
+              className="form-input border mt-1 w-full py-2 px-3 rounded-md shadow-sm focus:outline-none focus:border-blue-500  "
               required
             />
           </div>
@@ -147,7 +147,7 @@ export default function ProfilePage() {
               type="password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              className="form-input border mt-1 w-full"
+              className="form-input border mt-1 w-full py-2 px-3 rounded-md shadow-sm focus:outline-none focus:border-blue-500"
               required
             />
           </div>

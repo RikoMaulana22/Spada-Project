@@ -27,6 +27,24 @@ export interface ClassInfo {
   name: string;
 }
 
+export interface QuestionOption {
+  id: number;
+  text: string;
+  isCorrect: boolean;
+}
+
+// Tipe untuk Soal di Gudang Soal (BankedQuestion)
+export interface BankedQuestion {
+  id: number;
+  questionText: string;
+  type: 'pilgan' | 'esai' | 'upload_gambar' | 'link_google';
+  difficulty: 'MUDAH' | 'SEDANG' | 'SULIT';
+  subjectId: number;
+  subject: Subject;
+  author: { fullName: string }; // Sesuai dengan data yang dikirim controller
+  options?: QuestionOption[]; // Opsi jawaban (bisa jadi tidak ada untuk soal esai)
+}
+
 export interface Subject {
   id: number;
   name: string;

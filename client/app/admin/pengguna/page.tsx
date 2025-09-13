@@ -74,7 +74,7 @@ export default function ManageUsersPage() {
                     <h1 className="text-3xl text-gray-800 font-bold">Manajemen Pengguna</h1>
                     <Link 
                         href="/admin/users/import"
-                        className="btn-secondary whitespace-nowrappx-4 py-2 bg-gray-600 text-white font-semibold rounded-lg hover:bg-blue-700" // Gunakan style sekunder
+                        className="btn-secondary whitespace-nowrappx-4 py-2 bg-gray-600 text-white font-semibold rounded-lg hover:bg-green-700" // Gunakan style sekunder
                     >
                         Impor Massal
                     </Link>

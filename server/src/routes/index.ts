@@ -45,7 +45,7 @@ mainRouter.use('/submissions', authenticate, submissionRoutes); // <-- BARIS BAR
 mainRouter.use('/schedules', authenticate, scheduleRoutes); // <-- BARIS BARU
 mainRouter.use('/announcements', authenticate, announcementRoutes);
 mainRouter.use('/settings', settingRoutes);
-mainRouter.use('/question-bank', authenticate, questionBankRoutes);
+mainRouter.use('/question-banks', authenticate, questionBankRoutes);
 // Rute publik
 mainRouter.use('/auth', authRoutes);
 // Rute Wali Kelas
