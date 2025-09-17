@@ -1,15 +1,14 @@
-// Path: src/app/profile/page.tsx
 'use client';
 
 import { useState, FormEvent, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import apiClient from '@/lib/axios';
 import toast from 'react-hot-toast';
-import { FaUserEdit, FaLock, FaChevronLeft } from 'react-icons/fa';
+import { FaUserEdit, FaLock, FaChevronLeft, FaBook } from 'react-icons/fa';
 import Link from 'next/link';
 
 export default function ProfilePage() {
-  const { user, revalidateUser } = useAuth(); // Ambil fungsi revalidateUser dari context
+  const { user, revalidateUser } = useAuth();
 
   // State untuk form update profil
   const [fullName, setFullName] = useState('');
@@ -22,7 +21,8 @@ export default function ProfilePage() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isPasswordSubmitting, setIsPasswordSubmitting] = useState(false);
 
-  // Isi form dengan data user saat komponen dimuat
+  // Hapus semua state dan fungsi terkait gradebook dari sini
+  
   useEffect(() => {
     if (user) {
       setFullName(user.fullName);
@@ -38,7 +38,7 @@ export default function ProfilePage() {
     try {
       await apiClient.put('/users/profile', { fullName });
       toast.success('Profil berhasil diperbarui!', { id: toastId });
-      revalidateUser(); // Panggil fungsi untuk memperbarui data user di context
+      revalidateUser();
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Gagal memperbarui profil.', { id: toastId });
     } finally {
@@ -59,7 +59,6 @@ export default function ProfilePage() {
     try {
       await apiClient.put('/users/change-password', { currentPassword, newPassword });
       toast.success('Password berhasil diubah!', { id: toastId });
-      // Kosongkan field password setelah berhasil
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
@@ -77,9 +76,9 @@ export default function ProfilePage() {
   return (
     <div className="space-y-12 text-gray-800 p-8">
       <Link href="/dashboard" className="inline-flex items-center gap-2 text-gray-600 hover:text-blue-700 font-semibold hover:underline">
-                <FaChevronLeft />
-                <span>Kembali ke Dashboard</span>
-            </Link>
+        <FaChevronLeft />
+        <span>Kembali ke Dashboard</span>
+      </Link>
       <h1 className="text-3xl font-bold text-gray-800">Profil Saya</h1>
 
       {/* Form Update Profil */}
@@ -101,8 +100,8 @@ export default function ProfilePage() {
             <input
               type="email"
               value={email}
-              disabled // Email biasanya tidak bisa diubah
-              className="form-input mt-1 w-full bg-gray-100 cursor-not-allowed py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              disabled
+              className="form-input mt-1 w-full bg-gray-100 cursor-not-allowed py-2 px-3 border border-gray-300 rounded-md shadow-sm"
             />
           </div>
           <div className="flex justify-end">
@@ -117,10 +116,26 @@ export default function ProfilePage() {
         </form>
       </div>
 
+      {/* ================================================================== */}
+      {/* PERUBAHAN: Ganti tabel menjadi tombol */}
+      {/* ================================================================== */}
+      {user.role === 'guru' && (
+        <div className="bg-white p-8 rounded-lg shadow-md border border-gray-200">
+          <h2 className="text-2xl font-semibold text-gray-700 mb-4 flex items-center gap-3"><FaBook /> Rekap Nilai Siswa</h2>
+          <p className="text-gray-600 mb-6">Lihat dan kelola semua nilai siswa dari tugas yang telah Anda berikan.</p>
+          <div className="flex justify-start">
+            <Link href="/grades/teacher" className="px-5 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors">
+              Buka Rekap Nilai
+            </Link>
+          </div>
+        </div>
+      )}
+
       {/* Form Ubah Password */}
       <div className="bg-white p-8 rounded-lg shadow-md border border-gray-200">
         <h2 className="text-2xl font-semibold text-gray-700 mb-6 flex items-center gap-3"><FaLock /> Ubah Password</h2>
         <form onSubmit={handlePasswordChange} className="space-y-6">
+          {/* ... isi form ubah password tidak berubah ... */}
           <div>
             <label className="block text-sm font-medium text-gray-600">Password Saat Ini</label>
             <input
@@ -132,12 +147,12 @@ export default function ProfilePage() {
             />
           </div>
           <div>
-            <label className="block text-sm  font-medium text-gray-600">Password Baru</label>
+            <label className="block text-sm font-medium text-gray-600">Password Baru</label>
             <input
               type="password"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
-              className="form-input border mt-1 w-full py-2 px-3 rounded-md shadow-sm focus:outline-none focus:border-blue-500  "
+              className="form-input border mt-1 w-full py-2 px-3 rounded-md shadow-sm focus:outline-none focus:border-blue-500"
               required
             />
           </div>
@@ -155,8 +170,7 @@ export default function ProfilePage() {
             <button 
               type="submit" 
               disabled={isPasswordSubmitting} 
-              className="px-4 py-2 bg-green-600 text-white font-semibold 
-              rounded-lg hover:bg-green-700 disabled:bg-green-400 transition-colors"
+              className="px-4 py-2 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 disabled:bg-green-400 transition-colors"
             >
               {isPasswordSubmitting ? 'Menyimpan...' : 'Ubah Password'}
             </button>

@@ -87,6 +87,7 @@ export const submitAssignment = async (req: AuthRequest, res: Response) => {
     }
 };
 
+
 export const getSubmissionReview = async (req: AuthRequest, res: Response): Promise<void> => {
     const { id: submissionId } = req.params;
     const userId = req.user?.userId;
@@ -177,7 +178,7 @@ export const createSubmission = async (req: AuthRequest, res: Response): Promise
                     const question = aq.question; // question adalah QuestionBank
                     const studentAnswerOptionId = (answers as any)[question.id];
                     const correctOption = question.options.find(opt => opt.isCorrect);
-                    
+
                     if (studentAnswerOptionId !== undefined && correctOption && correctOption.id === studentAnswerOptionId) {
                         correctAnswers++;
                     }
@@ -196,7 +197,7 @@ export const createSubmission = async (req: AuthRequest, res: Response): Promise
             },
         });
 
-        res.status(201).json({ message: "Jawaban berhasil dikumpulkan!", submissionId: submission.id });
+        res.status(201).json({ message: "Jawaban berhasil dikumpulkan!", submission: submission });
     } catch (error: any) {
         console.error("Gagal mengumpulkan jawaban:", error);
         res.status(500).json({ message: 'Terjadi kesalahan pada server.' });
@@ -204,62 +205,62 @@ export const createSubmission = async (req: AuthRequest, res: Response): Promise
 };
 
 export const getMyGrades = async (req: AuthRequest, res: Response): Promise<void> => {
-  try {
-    const studentId = req.user?.userId;
+    try {
+        const studentId = req.user?.userId;
 
-    if (!studentId) {
-      res.status(401).json({ message: "Otentikasi diperlukan." });
-      return;
-    }
+        if (!studentId) {
+            res.status(401).json({ message: "Otentikasi diperlukan." });
+            return;
+        }
 
-    const grades = await prisma.submission.findMany({
-      where: {
-        studentId: studentId,
-        score: {
-          not: null, 
-        },
-      },
-      orderBy: {
-        submissionDate: 'desc',
-      },
-      select: {
-        id: true,
-        score: true,
-        submissionDate: true,
-        assignment: {
-          select: {
-            title: true,
-            topic: {
-              select: {
-                class: {
-                  select: {
-                    name: true,
-                    subject: {
-                      select: {
-                        name: true,
-                      },
-                    },
-                  },
+        const grades = await prisma.submission.findMany({
+            where: {
+                studentId: studentId,
+                score: {
+                    not: null,
                 },
-              },
             },
-          },
-        },
-      },
-    });
+            orderBy: {
+                submissionDate: 'desc',
+            },
+            select: {
+                id: true,
+                score: true,
+                submissionDate: true,
+                assignment: {
+                    select: {
+                        title: true,
+                        topic: {
+                            select: {
+                                class: {
+                                    select: {
+                                        name: true,
+                                        subject: {
+                                            select: {
+                                                name: true,
+                                            },
+                                        },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+            },
+        });
 
-    res.status(200).json(grades);
-  } catch (error) {
-    console.error("Gagal mengambil data nilai:", error);
-    res.status(500).json({ message: "Terjadi kesalahan pada server saat mengambil data nilai." });
-  }
+        res.status(200).json(grades);
+    } catch (error) {
+        console.error("Gagal mengambil data nilai:", error);
+        res.status(500).json({ message: "Terjadi kesalahan pada server saat mengambil data nilai." });
+    }
 };
 
 
 // --- FUNGSI BARU: Guru mengambil daftar submission untuk satu tugas ---
 export const getSubmissionsForAssignment = async (req: AuthRequest, res: Response): Promise<void> => {
     const { id: assignmentId } = req.params;
-    const teacherId = req.user?.userId; 
+    const teacherId = req.user?.userId;
 
     try {
         const assignmentWithSubmissions = await prisma.assignment.findUnique({
@@ -268,7 +269,7 @@ export const getSubmissionsForAssignment = async (req: AuthRequest, res: Respons
                 topic: {
                     select: {
                         class: {
-                            select: { teacherId: true } 
+                            select: { teacherId: true }
                         }
                     }
                 },
@@ -298,7 +299,6 @@ export const getSubmissionsForAssignment = async (req: AuthRequest, res: Respons
         res.status(500).json({ message: 'Gagal mengambil data submission.' });
     }
 };
-
 
 // --- FUNGSI BARU: Guru memberikan/memperbarui nilai ---
 export const gradeSubmission = async (req: AuthRequest, res: Response): Promise<void> => {
@@ -339,12 +339,12 @@ export const gradeSubmission = async (req: AuthRequest, res: Response): Promise<
             res.status(403).json({ message: 'Akses ditolak. Anda tidak berhak menilai submisi ini.' });
             return;
         }
-        
+
         const updatedSubmission = await prisma.submission.update({
             where: { id: Number(submissionId) },
             data: { score: scoreValue },
         });
-        
+
         res.status(200).json(updatedSubmission);
     } catch (error) {
         res.status(500).json({ message: 'Gagal memberikan nilai.' });

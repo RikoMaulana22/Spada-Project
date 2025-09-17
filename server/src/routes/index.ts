@@ -17,7 +17,7 @@ import announcementRoutes from './announcement.routes';
 import settingRoutes from './setting.routes';
 import homeroomRoutes from './homeroom.routes';
 import questionBankRoutes from './questionBank.routes'; 
-
+import userRoutes from './user.routes';
 
 
 
@@ -27,6 +27,7 @@ import questionBankRoutes from './questionBank.routes';
 
 const mainRouter = Router();
 
+mainRouter.use('/users', authenticate, userRoutes);
 // Rute publik
 mainRouter.use('/auth', authRoutes);
 

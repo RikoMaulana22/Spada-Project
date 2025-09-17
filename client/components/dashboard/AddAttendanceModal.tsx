@@ -3,7 +3,8 @@
 import { useState, FormEvent, useEffect } from 'react';
 import apiClient from '@/lib/axios';
 import Modal from '@/components/ui/Modal';
-import toast from 'react-hot-toast'; // Impor toast
+import toast from 'react-hot-toast';
+import { FaCalendarCheck, FaClock, FaInfoCircle } from 'react-icons/fa';
 
 interface AddAttendanceModalProps {
   isOpen: boolean;
@@ -36,10 +37,9 @@ export default function AddAttendanceModal({ isOpen, onClose, topicId, onAttenda
     e.preventDefault();
     if (!topicId) return;
 
-    // Validasi waktu
     if (new Date(closeTime) <= new Date(openTime)) {
-        toast.error('Waktu ditutup harus setelah waktu dibuka.');
-        return;
+      toast.error('Waktu ditutup harus setelah waktu dibuka.');
+      return;
     }
 
     setIsLoading(true);
@@ -56,7 +56,7 @@ export default function AddAttendanceModal({ isOpen, onClose, topicId, onAttenda
       setIsLoading(false);
     }
   };
-  
+
   // Gunakan handleClose untuk memastikan form direset saat ditutup manual
   const handleClose = () => {
     resetForm();
@@ -65,31 +65,93 @@ export default function AddAttendanceModal({ isOpen, onClose, topicId, onAttenda
 
   return (
     <div className='text-gray-800'>
-    <Modal isOpen={isOpen} onClose={handleClose} title="Atur Sesi Kehadiran">
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label className="block text-sm font-medium">Judul Absensi</label>
-          <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} required className="form-input w-full mt-1" />
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-                <label className="block text-sm font-medium">Waktu Dibuka</label>
-                <input type="datetime-local" value={openTime} onChange={(e) => setOpenTime(e.target.value)} required className="form-input w-full mt-1"/>
+      <Modal isOpen={isOpen} onClose={handleClose} title="Atur Sesi Kehadiran" isFullScreen>
+        {/* Wrapper untuk menengahkan konten di dalam modal fullscreen */}
+        <div className="flex items-center justify-center h-full bg-gray-50 p-4">
+          <div className="w-full max-w-2xl bg-white rounded-xl shadow-lg border border-gray-200">
+            {/* Header Form */}
+            <div className="p-6 border-b">
+              <div className="flex items-center gap-4">
+                <div className="bg-blue-100 text-blue-600 p-3 rounded-full">
+                  <FaCalendarCheck size={24} />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-gray-800">Atur Sesi Kehadiran</h2>
+                  <p className="text-sm text-gray-500">Buat jadwal agar siswa dapat melakukan absensi secara online.</p>
+                </div>
+              </div>
             </div>
-            <div>
-                <label className="block text-sm font-medium">Waktu Ditutup</label>
-                <input type="datetime-local" value={closeTime} onChange={(e) => setCloseTime(e.target.value)} required className="form-input w-full mt-1"/>
-            </div>
+
+            <form onSubmit={handleSubmit}>
+              <div className="p-6 space-y-6">
+                {/* Input Judul */}
+                <div>
+                  <label htmlFor="title" className="block text-sm font-medium text-gray-700">Judul Absensi</label>
+                  <input 
+                    id="title"
+                    type="text" 
+                    value={title} 
+                    onChange={(e) => setTitle(e.target.value)} 
+                    required 
+                    className="form-input w-full mt-1" 
+                    placeholder="Contoh: Absensi Pertemuan ke-3"
+                  />
+                </div>
+
+                {/* Input Waktu */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label htmlFor="openTime" className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                      <FaClock className="text-gray-400"/>
+                      Waktu Dibuka
+                    </label>
+                    <input 
+                      id="openTime"
+                      type="datetime-local" 
+                      value={openTime} 
+                      onChange={(e) => setOpenTime(e.target.value)} 
+                      required 
+                      className="form-input w-full mt-1"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="closeTime" className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                      <FaClock className="text-gray-400"/>
+                      Waktu Ditutup
+                    </label>
+                    <input 
+                      id="closeTime"
+                      type="datetime-local" 
+                      value={closeTime} 
+                      onChange={(e) => setCloseTime(e.target.value)} 
+                      required 
+                      className="form-input w-full mt-1"
+                    />
+                  </div>
+                </div>
+
+                {/* Informasi Bantuan */}
+                <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg flex items-start gap-3">
+                  <FaInfoCircle className="text-blue-500 mt-1 flex-shrink-0" />
+                  <p className="text-xs text-blue-700">
+                    Siswa hanya dapat mengisi absensi di antara waktu dibuka dan ditutup. Pastikan rentang waktu sudah benar.
+                  </p>
+                </div>
+              </div>
+              
+              {/* Footer Form (Tombol Aksi) */}
+              <div className="flex justify-end gap-4 p-6 bg-gray-50 border-t rounded-b-xl">
+                <button type="button" onClick={handleClose} className="btn-secondary">
+                  Batal
+                </button>
+                <button type="submit" disabled={isLoading} className="btn-primary">
+                  {isLoading ? 'Menyimpan...' : 'Simpan Sesi'}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
-        <p className="text-xs text-gray-500">Siswa hanya bisa mengisi absensi di antara waktu dibuka dan ditutup.</p>
-        <div className="flex justify-end gap-4 mt-6">
-          <button type="button" onClick={handleClose} className="btn-secondary">Batal</button>
-          <button type="submit" disabled={isLoading} className="btn-primary">
-            {isLoading ? 'Menyimpan...' : 'Simpan Sesi'}
-          </button>
-        </div>
-      </form>
-    </Modal>
+      </Modal>
     </div>
   );
 }

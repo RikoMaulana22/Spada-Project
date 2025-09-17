@@ -8,6 +8,7 @@ import AddAssignmentForm from '@/components/dashboard/AddAssignmentForm';
 import { Search, FileText, Trash2, ArrowRight } from 'lucide-react';
 import QuestionDetailModal from './QuestionDetailModal';
 
+// (Fungsi useDebounce dan komponen ImportWordTab tidak berubah)
 function useDebounce<T>(value: T, delay: number): T {
   const [debouncedValue, setDebouncedValue] = useState<T>(value);
   useEffect(() => {
@@ -17,7 +18,6 @@ function useDebounce<T>(value: T, delay: number): T {
   return debouncedValue;
 }
 
-// Komponen untuk Tab Impor dari Word
 const ImportWordTab = ({ onImportSuccess, subjects, difficulties }: { onImportSuccess: () => void, subjects: any[], difficulties: string[] }) => {
   const [file, setFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -102,6 +102,7 @@ const ImportWordTab = ({ onImportSuccess, subjects, difficulties }: { onImportSu
   );
 };
 
+
 interface BankedQuestion {
   id: number;
   questionText: string;
@@ -113,11 +114,15 @@ interface Subject {
   name: string;
 }
 
+// ==================================================================
+// PERBAIKAN 1: Tambahkan 'attemptLimit' ke dalam interface dan state
+// ==================================================================
 interface AssignmentDetails {
-    title: string;
-    description: string;
-    dueDate: string;
-    type: 'pilgan' | 'esai';
+  title: string;
+  description: string;
+  dueDate: string;
+  type: 'pilgan' | 'esai';
+  attemptLimit: number; // <-- Tambahkan ini
 }
 
 export default function QuestionBankModal({ isOpen, onClose, topicId, onAssignmentAdded }: any) {
@@ -129,16 +134,17 @@ export default function QuestionBankModal({ isOpen, onClose, topicId, onAssignme
   const [editingQuestionId, setEditingQuestionId] = useState<number | null>(null);
 
   const [assignmentDetails, setAssignmentDetails] = useState<AssignmentDetails>({
-      title: '',
-      description: '',
-      dueDate: '',
-      type: 'pilgan',
+    title: '',
+    description: '',
+    dueDate: '',
+    type: 'pilgan',
+    attemptLimit: 1, // <-- Tambahkan nilai default
   });
-  
+
   const [searchTerm, setSearchTerm] = useState('');
   const [filterSubject, setFilterSubject] = useState<string>('');
   const [filterDifficulty, setFilterDifficulty] = useState<string>('');
-  
+
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const difficulties: BankedQuestion['difficulty'][] = ['mudah', 'sedang', 'sulit'];
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
@@ -148,7 +154,7 @@ export default function QuestionBankModal({ isOpen, onClose, topicId, onAssignme
       .then(res => setSubjects(res.data))
       .catch(() => toast.error("Gagal memuat daftar mata pelajaran."));
   };
-  
+
   const fetchBankedQuestions = () => {
     setIsLoading(true);
     const params = new URLSearchParams();
@@ -166,7 +172,7 @@ export default function QuestionBankModal({ isOpen, onClose, topicId, onAssignme
     if (isOpen) {
       setStep('select');
       setSelectedQuestions([]);
-      setAssignmentDetails({ title: '', description: '', dueDate: '', type: 'pilgan' });
+      setAssignmentDetails({ title: '', description: '', dueDate: '', type: 'pilgan', attemptLimit: 1 });
       fetchPrerequisites();
     }
   }, [isOpen]);
@@ -199,8 +205,10 @@ export default function QuestionBankModal({ isOpen, onClose, topicId, onAssignme
   };
 
   const handleDetailsChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-      const { name, value } = e.target;
-      setAssignmentDetails(prev => ({ ...prev, [name]: value }));
+    const { name, value, type } = e.target;
+    // Pastikan nilai untuk attemptLimit adalah angka
+    const finalValue = type === 'number' ? parseInt(value, 10) || 1 : value;
+    setAssignmentDetails(prev => ({ ...prev, [name]: finalValue }));
   };
 
   const handleCreateAssignmentFromBank = async (e: FormEvent) => {
@@ -210,8 +218,8 @@ export default function QuestionBankModal({ isOpen, onClose, topicId, onAssignme
       return;
     }
     if (!assignmentDetails.title || !assignmentDetails.dueDate) {
-        toast.error("Judul dan tanggal tenggat wajib diisi.");
-        return;
+      toast.error("Judul dan tanggal tenggat wajib diisi.");
+      return;
     }
 
     setIsLoading(true);
@@ -268,7 +276,7 @@ export default function QuestionBankModal({ isOpen, onClose, topicId, onAssignme
           </div>
 
           <div className="flex-grow overflow-hidden">
-            
+
             {step === 'select' && (
               <div className="flex h-full">
                 <aside className="w-1/4 max-w-xs flex-shrink-0 bg-white border-r p-6 space-y-6 overflow-y-auto">
@@ -362,32 +370,50 @@ export default function QuestionBankModal({ isOpen, onClose, topicId, onAssignme
               </div>
             )}
 
+            {/* ================================================================== */}
+            {/* PERBAIKAN 2: Tambahkan input untuk Batas Pengerjaan */}
+            {/* ================================================================== */}
             {step === 'details' && (
               <div className="p-8 max-w-2xl mx-auto h-full overflow-y-auto">
-                  <h3 className="font-semibold text-xl text-gray-800 mb-6">Langkah 2: Lengkapi Detail Tugas</h3>
-                  <form onSubmit={handleCreateAssignmentFromBank} className="space-y-4">
-                      <div>
-                          <label className="block text-sm font-medium">Judul Tugas</label>
-                          <input type="text" name="title" value={assignmentDetails.title} onChange={handleDetailsChange} required className="input-form w-full" />
-                      </div>
-                      <div>
-                          <label className="block text-sm font-medium">Deskripsi (Opsional)</label>
-                          <textarea name="description" value={assignmentDetails.description} onChange={handleDetailsChange} rows={4} className="input-form w-full"></textarea>
-                      </div>
-                      <div>
-                          <label className="block text-sm font-medium">Tanggal Tenggat</label>
-                          <input type="datetime-local" name="dueDate" value={assignmentDetails.dueDate} onChange={handleDetailsChange} required className="input-form w-full" />
-                      </div>
-                      
-                      <div className="flex justify-between items-center pt-6 border-t mt-6">
-                           <button type="button" onClick={() => setStep('select')} className="btn-secondary">
-                               Kembali Memilih Soal
-                           </button>
-                           <button type="submit" disabled={isLoading} className="btn-primary">
-                               Buat Tugas Sekarang
-                           </button>
-                      </div>
-                  </form>
+                <h3 className="font-semibold text-xl text-gray-800 mb-6">Langkah 2: Lengkapi Detail Tugas</h3>
+                <form onSubmit={handleCreateAssignmentFromBank} className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium">Judul Tugas</label>
+                    <input type="text" name="title" value={assignmentDetails.title} onChange={handleDetailsChange} required className="input-form w-full" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium">Deskripsi (Opsional)</label>
+                    <textarea name="description" value={assignmentDetails.description} onChange={handleDetailsChange} rows={4} className="input-form w-full"></textarea>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium">Tanggal Tenggat</label>
+                    <input type="datetime-local" name="dueDate" value={assignmentDetails.dueDate} onChange={handleDetailsChange} required className="input-form w-full" />
+                  </div>
+                  {/* --- INPUT BARU DITAMBAHKAN DI SINI --- */}
+                  <div>
+                    <label className="block text-sm font-medium">Batas Pengerjaan</label>
+                    <input
+                      type="number"
+                      name="attemptLimit"
+                      value={assignmentDetails.attemptLimit}
+                      onChange={handleDetailsChange}
+                      required
+                      min="1"
+                      className="input-form w-full"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Berapa kali siswa dapat mencoba mengerjakan tugas ini.</p>
+                  </div>
+                  {/* --- AKHIR PENAMBAHAN --- */}
+
+                  <div className="flex justify-between items-center pt-6 border-t mt-6">
+                    <button type="button" onClick={() => setStep('select')} className="btn-secondary">
+                      Kembali Memilih Soal
+                    </button>
+                    <button type="submit" disabled={isLoading} className="btn-primary">
+                      Buat Tugas Sekarang
+                    </button>
+                  </div>
+                </form>
               </div>
             )}
 

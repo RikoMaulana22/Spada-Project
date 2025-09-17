@@ -7,7 +7,7 @@ import toast from 'react-hot-toast';
 import { FaCheck, FaTimes, FaInfoCircle } from 'react-icons/fa';
 import QuizNavigation from '@/components/quiz/QuizNavigation';
 
-// PERBAIKAN 2: Tambahkan 'explanation' pada tipe data options
+// Tipe data tidak perlu diubah, sudah sesuai
 interface ReviewData {
   id: number;
   score: number | null;
@@ -17,20 +17,23 @@ interface ReviewData {
   timeTakenMs: number;
   assignment: {
     title: string;
-    questions: { 
-      id: number; 
-      questionText: string; 
-      options: { 
-        id: number; 
-        optionText: string; 
-        isCorrect: boolean;
-        explanation?: string; // <-- Tambahkan ini
-      }[]; 
+    questions: {
+        // Ini adalah tipe untuk AssignmentQuestion (tabel join)
+        question: { // Ini adalah tipe untuk QuestionBank
+            id: number; 
+            questionText: string; 
+            options: { 
+                id: number; 
+                optionText: string; 
+                isCorrect: boolean;
+                explanation?: string;
+            }[]; 
+        }
     }[];
   };
 }
 
-// Fungsi helper (tidak ada perubahan)
+// Fungsi helper tidak berubah
 const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleString('id-ID', {
         weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit'
@@ -50,7 +53,6 @@ export default function SubmissionReviewPage() {
     const [reviewData, setReviewData] = useState<ReviewData | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
-    // PERBAIKAN 1: Implementasikan logika fetchData
     const fetchData = useCallback(async () => {
         if (!submissionId) {
             setIsLoading(false);
@@ -58,13 +60,12 @@ export default function SubmissionReviewPage() {
         }
         setIsLoading(true);
         try {
-            // Pastikan endpoint ini sesuai dengan API backend Anda
             const response = await apiClient.get(`/submissions/review/${submissionId}`);
             setReviewData(response.data);
         } catch (error) {
             console.error("Gagal memuat hasil review:", error);
             toast.error("Gagal memuat hasil pengerjaan.");
-            setReviewData(null); // Set ke null jika error
+            setReviewData(null);
         } finally {
             setIsLoading(false);
         }
@@ -79,9 +80,13 @@ export default function SubmissionReviewPage() {
 
     const { assignment, selectedOptions, score, startedOn, completedOn, timeTakenMs } = reviewData;
     
-    const questionResults = assignment.questions.map(q => {
-        const studentAnswerId = selectedOptions[q.id];
-        const correctOption = q.options.find(opt => opt.isCorrect);
+    // ==================================================================
+    // PERBAIKAN 1 DI SINI
+    // ==================================================================
+    const questionResults = assignment.questions.map(assignmentQuestion => {
+        const question = assignmentQuestion.question; // Ambil objek soal yang sebenarnya
+        const studentAnswerId = selectedOptions[question.id];
+        const correctOption = question.options.find(opt => opt.isCorrect);
         return { isCorrect: studentAnswerId === correctOption?.id };
     });
 
@@ -104,22 +109,26 @@ export default function SubmissionReviewPage() {
 
                   {/* Tampilan Soal dan Jawaban */}
                   <div className="space-y-6">
-                      {assignment.questions.map((q, index) => {
-                          const studentAnswerId = selectedOptions[q.id];
-                          const correctOption = q.options.find(opt => opt.isCorrect);
+                      {/* ================================================================== */}
+                      {/* PERBAIKAN 2 DI SINI */}
+                      {/* ================================================================== */}
+                      {assignment.questions.map((assignmentQuestion, index) => {
+                          const question = assignmentQuestion.question; // Ambil objek soal yang sebenarnya
+                          const studentAnswerId = selectedOptions[question.id];
+                          const correctOption = question.options.find(opt => opt.isCorrect);
                           const isCorrect = studentAnswerId === correctOption?.id;
 
                           return (
-                              <div key={q.id} id={`question-${q.id}`} className={`p-4 rounded-lg text-gray-700 border ${isCorrect ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
-                                  <div className="flex justify-between  items-start mb-3">
+                              <div key={question.id} id={`question-${question.id}`} className={`p-4 rounded-lg text-gray-700 border ${isCorrect ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
+                                  <div className="flex justify-between items-start mb-3">
                                       <p className="font-bold">Question {index + 1}</p>
                                       <p className={`font-semibold ${isCorrect ? 'text-green-700' : 'text-red-700'}`}>
                                           {isCorrect ? 'Correct' : 'Incorrect'}
                                       </p>
                                   </div>
-                                  <p className="mb-4">{q.questionText}</p>
+                                  <p className="mb-4">{question.questionText}</p>
                                   <div className="space-y-2">
-                                      {q.options.map(opt => {
+                                      {question.options.map(opt => { // Akses dari question.options
                                           const isSelected = studentAnswerId === opt.id;
                                           return (
                                               <div key={opt.id} className={`flex items-center gap-3 p-2 rounded ${isSelected ? 'bg-gray-200' : ''}`}>
@@ -131,7 +140,6 @@ export default function SubmissionReviewPage() {
                                       })}
                                   </div>
                                   
-                                  {/* PERBAIKAN 3: Tampilkan blok feedback/penjelasan */}
                                   <div className="mt-4 pt-3 border-t border-gray-300">
                                       {!isCorrect && (
                                         <p className="text-sm">The correct answer is: <strong>{correctOption?.optionText}</strong></p>

@@ -120,7 +120,7 @@ export const createAssignmentForTopic = async (req: AuthRequest, res: Response):
 export const createAssignmentFromBank = async (req: AuthRequest, res: Response): Promise<void> => {
     const { topicId } = req.params;
     // Ambil detail tugas dan array ID soal dari body
-    const { title, description, dueDate, type, questionIds } = req.body;
+    const { title, description, dueDate, type, questionIds, attemptLimit  } = req.body;
     const teacherId = req.user?.userId;
 
     if (!teacherId) {
@@ -142,6 +142,7 @@ export const createAssignmentFromBank = async (req: AuthRequest, res: Response):
                     dueDate: new Date(dueDate),
                     type,
                     topicId: Number(topicId),
+                    attemptLimit: Number(attemptLimit) || 1,
                 },
             });
 
