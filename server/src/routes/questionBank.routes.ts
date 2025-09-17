@@ -5,7 +5,8 @@ import {
     getBankedQuestions,
     importFromWord,
     getQuestionDetails,
-    updateQuestion
+    updateQuestion,
+    deleteQuestion 
 } from '../controllers/questionBank.controller';
 import { authenticate } from '../middlewares/auth.middleware';
 import { checkRole } from '../middlewares/role.middleware';
@@ -30,6 +31,6 @@ router.post(
 // Rute untuk detail dan update soal
 router.get('/:id', checkRole(['guru', 'admin', 'wali_kelas']), getQuestionDetails);
 router.put('/:id', checkRole(['guru', 'admin']), updateQuestion);
-
+router.delete('/:id', checkRole(['guru', 'admin']), deleteQuestion); 
 
 export default router;

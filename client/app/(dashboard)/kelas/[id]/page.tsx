@@ -1,4 +1,3 @@
-// Path: client/app/(dashboard)/kelas/[id]/page.tsx
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
@@ -12,13 +11,10 @@ import AddTopicModal from '@/components/dashboard/AddTopicModal';
 import AddActivityModal from '@/components/dashboard/AddActivityModal';
 import AddMaterialModal from '@/components/dashboard/AddMaterialModal';
 import EditTopicModal from '@/components/dashboard/EditTopicModal';
-// HAPUS: Impor AddAssignmentModal tidak lagi diperlukan
-// import AddAssignmentModal from '@/components/dashboard/AddAssignmentModal';
 import AddAttendanceModal from '@/components/dashboard/AddAttendanceModal';
 import MarkAttendanceModal from '@/components/dashboard/MarkAttendanceModal';
 import toast from 'react-hot-toast';
 
-// Tambahkan modal baru
 import QuestionBankModal from '@/components/dashboard/QuestionBankModal';
 
 // Define Data Types
@@ -76,10 +72,8 @@ export default function ClassDetailPage() {
     const [selectedTopicId, setSelectedTopicId] = useState<number | null>(null);
     const [isEditTopicModalOpen, setIsEditTopicModalOpen] = useState(false);
     const [editingTopic, setEditingTopic] = useState<TopicInfo | null>(null);
-    const [isAddAttendanceModalOpen, setIsAddAttendanceModalOpen] = useState(false); // For Teachers
-    const [isMarkAttendanceModalOpen, setIsMarkAttendanceModalOpen] = useState(false); // For Students
-    // HAPUS: State isAssignmentModalOpen tidak lagi diperlukan
-    // const [isAssignmentModalOpen, setIsAssignmentModalOpen] = useState(false);
+    const [isAddAttendanceModalOpen, setIsAddAttendanceModalOpen] = useState(false);
+    const [isMarkAttendanceModalOpen, setIsMarkAttendanceModalOpen] = useState(false);
     const [isQuestionBankModalOpen, setIsQuestionBankModalOpen] = useState(false);
     const [selectedAttendanceId, setSelectedAttendanceId] = useState<number | null>(null);
 
@@ -87,9 +81,11 @@ export default function ClassDetailPage() {
         setOpenTopics(prev => ({ ...prev, [topicId]: !prev[topicId] }));
     };
 
+    // --- PERBAIKAN 1: Hapus `classData` dari dependency array `useCallback` ---
+    // Ini adalah penyebab utama infinite loop. Cukup `id` sebagai dependensi.
     const fetchData = useCallback(async () => {
         if (id) {
-            if (classData === null) setIsLoading(true);
+            setIsLoading(true); // Selalu set loading di awal fetch
             setError(null);
             try {
                 const response = await apiClient.get(`/classes/${id}`);
@@ -101,9 +97,13 @@ export default function ClassDetailPage() {
                 setIsLoading(false);
             }
         }
-    }, [id, classData]);
+    }, [id]);
 
-    useEffect(() => { fetchData(); }, [fetchData, id]);
+    useEffect(() => { 
+        fetchData(); 
+    // --- PERBAIKAN 2: Cukup sertakan `fetchData` sebagai dependensi ---
+    // `id` sudah menjadi dependensi dari `fetchData`, jadi tidak perlu di sini.
+    }, [fetchData]);
 
     const handleOpenActivityModal = (topicId: number) => {
         setSelectedTopicId(topicId);
@@ -142,6 +142,16 @@ export default function ClassDetailPage() {
         setIsEditTopicModalOpen(true);
     };
 
+    // --- PERBAIKAN 3: Stabilkan semua fungsi penutup modal dengan `useCallback` ---
+    const handleCloseTopicModal = useCallback(() => setIsTopicModalOpen(false), []);
+    const handleCloseActivityModal = useCallback(() => setIsActivityModalOpen(false), []);
+    const handleCloseMaterialModal = useCallback(() => setIsMaterialModalOpen(false), []);
+    const handleCloseEditTopicModal = useCallback(() => setIsEditTopicModalOpen(false), []);
+    const handleCloseQuestionBankModal = useCallback(() => setIsQuestionBankModalOpen(false), []);
+    const handleCloseAddAttendanceModal = useCallback(() => setIsAddAttendanceModalOpen(false), []);
+    const handleCloseMarkAttendanceModal = useCallback(() => setIsMarkAttendanceModalOpen(false), []);
+
+
     const isTeacher = user?.role === 'guru' && user?.id === classData?.teacherId;
 
     if (isLoading) return <div className="p-8 text-center">Memuat...</div>;
@@ -151,30 +161,28 @@ export default function ClassDetailPage() {
     return (
         <>
             {/* --- Render All Modals --- */}
-            <AddTopicModal isOpen={isTopicModalOpen} onClose={() => setIsTopicModalOpen(false)} classId={classData.id} nextOrder={classData.topics?.length + 1 || 1} onTopicCreated={fetchData} />
+            <AddTopicModal isOpen={isTopicModalOpen} onClose={handleCloseTopicModal} classId={classData.id} nextOrder={classData.topics?.length + 1 || 1} onTopicCreated={fetchData} />
             <AddActivityModal
                 isOpen={isActivityModalOpen}
-                onClose={() => setIsActivityModalOpen(false)}
+                onClose={handleCloseActivityModal}
                 onSelectMaterial={() => { setIsActivityModalOpen(false); setIsMaterialModalOpen(true); }}
                 onSelectQuestionBank={handleOpenQuestionBankModal}
                 onSelectAttendance={handleOpenAddAttendanceModal}
             />
-            <AddMaterialModal isOpen={isMaterialModalOpen} onClose={() => setIsMaterialModalOpen(false)} topicId={selectedTopicId} onMaterialAdded={fetchData} />
-            <EditTopicModal isOpen={isEditTopicModalOpen} onClose={() => setIsEditTopicModalOpen(false)} topic={editingTopic} onTopicUpdated={fetchData} />
+            <AddMaterialModal isOpen={isMaterialModalOpen} onClose={handleCloseMaterialModal} topicId={selectedTopicId} onMaterialAdded={fetchData} />
+            <EditTopicModal isOpen={isEditTopicModalOpen} onClose={handleCloseEditTopicModal} topic={editingTopic} onTopicUpdated={fetchData} />
             
-            {/* HAPUS: Pemanggilan AddAssignmentModal */}
-
             <QuestionBankModal
                 isOpen={isQuestionBankModalOpen}
-                onClose={() => setIsQuestionBankModalOpen(false)}
+                onClose={handleCloseQuestionBankModal}
                 topicId={selectedTopicId}
                 onAssignmentAdded={fetchData}
             />
 
-            <AddAttendanceModal isOpen={isAddAttendanceModalOpen} onClose={() => setIsAddAttendanceModalOpen(false)} topicId={selectedTopicId} onAttendanceAdded={fetchData} />
+            <AddAttendanceModal isOpen={isAddAttendanceModalOpen} onClose={handleCloseAddAttendanceModal} topicId={selectedTopicId} onAttendanceAdded={fetchData} />
             <MarkAttendanceModal
                 isOpen={isMarkAttendanceModalOpen}
-                onClose={() => setIsMarkAttendanceModalOpen(false)}
+                onClose={handleCloseMarkAttendanceModal}
                 onSuccess={fetchData}
                 attendanceId={selectedAttendanceId}
                 studentName={user?.fullName || ''}

@@ -133,23 +133,26 @@ export const updateQuestion = async (req: Request, res: Response) => {
     const { questionText, difficulty, subjectId, options } = req.body;
 
     try {
+        // Memulai transaksi database untuk memastikan semua perubahan berhasil
         await prisma.$transaction(async (tx) => {
+            // 1. Perbarui data utama soal (teks pertanyaan, kesulitan, mapel)
             await tx.questionBank.update({
                 where: { id: Number(id) },
                 data: {
                     questionText,
-                    // PERBAIKAN 3: Konversi difficulty ke huruf besar
                     difficulty: difficulty.toUpperCase(),
                     subjectId: Number(subjectId),
                 },
             });
 
+            // 2. Hapus semua opsi jawaban yang lama
             await tx.questionOption.deleteMany({ where: { questionId: Number(id) } });
 
+            // 3. Buat kembali semua opsi jawaban dengan data yang baru
             if (options && options.length > 0) {
                 await tx.questionOption.createMany({
                     data: options.map((opt: { text: string; isCorrect: boolean; }) => ({
-                        text: opt.text,
+                        optionText: opt.text, 
                         isCorrect: opt.isCorrect,
                         questionId: Number(id),
                     })),
@@ -161,5 +164,32 @@ export const updateQuestion = async (req: Request, res: Response) => {
     } catch (error) {
         console.error("Gagal update soal:", error);
         res.status(500).json({ message: "Gagal memperbarui soal." });
+    }
+};
+
+export const deleteQuestion = async (req: AuthRequest, res: Response) => {
+    const { id } = req.params;
+    const userId = req.user!.userId; // Pengguna yang melakukan aksi
+
+    try {
+        const question = await prisma.questionBank.findUnique({
+            where: { id: Number(id) },
+        });
+
+        // Validasi: Pastikan soal ada 
+        if (!question) {
+            return res.status(404).json({ message: "Soal tidak ditemukan." });
+        }
+        
+        // (Opsional) Anda bisa menambahkan validasi kepemilikan di sini jika diperlukan
+        // if (question.teacherId !== userId) {
+        //     return res.status(403).json({ message: "Anda tidak berhak menghapus soal ini." });
+        // }
+
+        await prisma.questionBank.delete({ where: { id: Number(id) } });
+        res.status(200).json({ message: "Soal berhasil dihapus secara permanen." });
+    } catch (error) {
+        console.error("Gagal menghapus soal:", error);
+        res.status(500).json({ message: "Gagal menghapus soal." });
     }
 };

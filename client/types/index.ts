@@ -29,8 +29,10 @@ export interface ClassInfo {
 
 export interface QuestionOption {
   id: number;
-  text: string;
+  optionText: string;
   isCorrect: boolean;
+    explanation?: string;
+
 }
 
 // Tipe untuk Soal di Gudang Soal (BankedQuestion)

@@ -117,6 +117,56 @@ export const createAssignmentForTopic = async (req: AuthRequest, res: Response):
     }
 };
 
+export const createAssignmentFromBank = async (req: AuthRequest, res: Response): Promise<void> => {
+    const { topicId } = req.params;
+    // Ambil detail tugas dan array ID soal dari body
+    const { title, description, dueDate, type, questionIds } = req.body;
+    const teacherId = req.user?.userId;
+
+    if (!teacherId) {
+        res.status(403).json({ message: "Akses ditolak." });
+        return;
+    }
+    if (!title || !dueDate || !type || !questionIds || !Array.isArray(questionIds) || questionIds.length === 0) {
+        res.status(400).json({ message: "Data tidak lengkap. Judul, tanggal tenggat, tipe, dan minimal satu soal wajib diisi." });
+        return;
+    }
+
+    try {
+        const newAssignment = await prisma.$transaction(async (tx) => {
+            // 1. Buat data tugas utama
+            const assignment = await tx.assignment.create({
+                data: {
+                    title,
+                    description,
+                    dueDate: new Date(dueDate),
+                    type,
+                    topicId: Number(topicId),
+                },
+            });
+
+            // 2. Siapkan data untuk tabel penghubung (AssignmentQuestion)
+            const assignmentQuestionsData = questionIds.map((questionId: number, index: number) => ({
+                assignmentId: assignment.id,
+                questionId: questionId,
+                order: index + 1, // Atur urutan soal
+            }));
+
+            // 3. Masukkan semua relasi soal ke dalam tugas
+            await tx.assignmentQuestion.createMany({
+                data: assignmentQuestionsData,
+            });
+
+            return assignment;
+        });
+
+        res.status(201).json({ message: "Tugas berhasil dibuat dari gudang soal!", assignment: newAssignment });
+    } catch (error) {
+        console.error("Gagal membuat tugas dari gudang soal:", error);
+        res.status(500).json({ message: "Terjadi kesalahan internal saat menyimpan tugas." });
+    }
+};
+
 
 
 export const getAssignmentSubmissions = async (req: AuthRequest, res: Response): Promise<void> => {

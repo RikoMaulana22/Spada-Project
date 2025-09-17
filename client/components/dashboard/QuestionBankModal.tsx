@@ -1,13 +1,12 @@
-// Di file: client/components/dashboard/QuestionBankModal.tsx
 'use client';
 
 import { useState, useEffect, ChangeEvent, FormEvent } from 'react';
 import Modal from '@/components/ui/Modal';
 import apiClient from '@/lib/axios';
 import toast from 'react-hot-toast';
-import AddAssignmentFormOriginal from '@/components/dashboard/AddAssignmentForm';
-import { Search, FileText } from 'lucide-react';
-import QuestionDetailModal from './QuestionDetailModal'; // <-- Impor modal detail
+import AddAssignmentForm from '@/components/dashboard/AddAssignmentForm';
+import { Search, FileText, Trash2, ArrowRight } from 'lucide-react';
+import QuestionDetailModal from './QuestionDetailModal';
 
 function useDebounce<T>(value: T, delay: number): T {
   const [debouncedValue, setDebouncedValue] = useState<T>(value);
@@ -103,7 +102,6 @@ const ImportWordTab = ({ onImportSuccess, subjects, difficulties }: { onImportSu
   );
 };
 
-// ... (Interface declarations) ...
 interface BankedQuestion {
   id: number;
   questionText: string;
@@ -115,21 +113,32 @@ interface Subject {
   name: string;
 }
 
+interface AssignmentDetails {
+    title: string;
+    description: string;
+    dueDate: string;
+    type: 'pilgan' | 'esai';
+}
+
 export default function QuestionBankModal({ isOpen, onClose, topicId, onAssignmentAdded }: any) {
-  const [activeTab, setActiveTab] = useState<'select' | 'create' | 'import'>('select');
+  const [step, setStep] = useState<'select' | 'details' | 'create' | 'import'>('select');
   const [bankedQuestions, setBankedQuestions] = useState<BankedQuestion[]>([]);
   const [selectedQuestions, setSelectedQuestions] = useState<number[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-
-  // State untuk modal detail
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [editingQuestionId, setEditingQuestionId] = useState<number | null>(null);
 
-  // ... (Filter states) ...
+  const [assignmentDetails, setAssignmentDetails] = useState<AssignmentDetails>({
+      title: '',
+      description: '',
+      dueDate: '',
+      type: 'pilgan',
+  });
+  
   const [searchTerm, setSearchTerm] = useState('');
   const [filterSubject, setFilterSubject] = useState<string>('');
   const [filterDifficulty, setFilterDifficulty] = useState<string>('');
-
+  
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const difficulties: BankedQuestion['difficulty'][] = ['mudah', 'sedang', 'sulit'];
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
@@ -139,7 +148,7 @@ export default function QuestionBankModal({ isOpen, onClose, topicId, onAssignme
       .then(res => setSubjects(res.data))
       .catch(() => toast.error("Gagal memuat daftar mata pelajaran."));
   };
-
+  
   const fetchBankedQuestions = () => {
     setIsLoading(true);
     const params = new URLSearchParams();
@@ -155,15 +164,18 @@ export default function QuestionBankModal({ isOpen, onClose, topicId, onAssignme
 
   useEffect(() => {
     if (isOpen) {
+      setStep('select');
+      setSelectedQuestions([]);
+      setAssignmentDetails({ title: '', description: '', dueDate: '', type: 'pilgan' });
       fetchPrerequisites();
     }
   }, [isOpen]);
 
   useEffect(() => {
-    if (isOpen && activeTab === 'select') {
+    if (isOpen && step === 'select') {
       fetchBankedQuestions();
     }
-  }, [isOpen, activeTab, debouncedSearchTerm, filterSubject, filterDifficulty]);
+  }, [isOpen, step, debouncedSearchTerm, filterSubject, filterDifficulty]);
 
   const handleOpenDetailModal = (questionId: number) => {
     setEditingQuestionId(questionId);
@@ -178,9 +190,49 @@ export default function QuestionBankModal({ isOpen, onClose, topicId, onAssignme
     );
   };
 
-  const handleCreateAssignmentFromBank = async () => {
-    if (selectedQuestions.length === 0) return;
-    toast.success(`Membuat tugas dengan ${selectedQuestions.length} soal terpilih. (Fungsionalitas backend segera hadir)`);
+  const handleProceedToDetails = () => {
+    if (selectedQuestions.length === 0) {
+      toast.error("Pilih minimal satu soal untuk membuat tugas.");
+      return;
+    }
+    setStep('details');
+  };
+
+  const handleDetailsChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+      const { name, value } = e.target;
+      setAssignmentDetails(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleCreateAssignmentFromBank = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!topicId || selectedQuestions.length === 0) {
+      toast.error("Silakan pilih minimal satu soal.");
+      return;
+    }
+    if (!assignmentDetails.title || !assignmentDetails.dueDate) {
+        toast.error("Judul dan tanggal tenggat wajib diisi.");
+        return;
+    }
+
+    setIsLoading(true);
+    const toastId = toast.loading('Menyimpan tugas...');
+
+    const payload = {
+      ...assignmentDetails,
+      questionIds: selectedQuestions,
+    };
+
+    try {
+      await apiClient.post(`/assignments/topic/${topicId}/from-bank`, payload);
+
+      toast.success(`Tugas "${assignmentDetails.title}" berhasil dibuat!`, { id: toastId });
+      onAssignmentAdded();
+      onClose();
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Gagal membuat tugas.', { id: toastId });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleResetFilters = () => {
@@ -189,6 +241,19 @@ export default function QuestionBankModal({ isOpen, onClose, topicId, onAssignme
     setFilterDifficulty('');
   }
 
+  const handleDeleteQuestion = async (questionId: number) => {
+    if (!window.confirm('Apakah Anda yakin ingin menghapus soal ini secara permanen dari gudang soal?')) {
+      return;
+    }
+    const toastId = toast.loading('Menghapus soal...');
+    try {
+      await apiClient.delete(`/question-banks/${questionId}`);
+      toast.success('Soal berhasil dihapus.', { id: toastId });
+      fetchBankedQuestions();
+    } catch (error) {
+      toast.error('Gagal menghapus soal.', { id: toastId });
+    }
+  };
 
   return (
     <div className='text-gray-800'>
@@ -196,18 +261,18 @@ export default function QuestionBankModal({ isOpen, onClose, topicId, onAssignme
         <div className="flex flex-col h-full bg-gray-50">
           <div className="border-b border-gray-200 px-6 flex-shrink-0 bg-white">
             <nav className="-mb-px flex space-x-6">
-              <button onClick={() => setActiveTab('select')} className={`tab-button ${activeTab === 'select' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>Pilih dari Gudang</button>
-              <button onClick={() => setActiveTab('create')} className={`tab-button ${activeTab === 'create' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>Buat Soal Baru</button>
-              <button onClick={() => setActiveTab('import')} className={`tab-button ${activeTab === 'import' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>Impor Word</button>
+              <button onClick={() => setStep('select')} className={`tab-button ${step === 'select' || step === 'details' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>Pilih dari Gudang</button>
+              <button onClick={() => setStep('create')} className={`tab-button ${step === 'create' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>Buat Soal Baru</button>
+              <button onClick={() => setStep('import')} className={`tab-button ${step === 'import' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>Impor Word</button>
             </nav>
           </div>
 
           <div className="flex-grow overflow-hidden">
-            {activeTab === 'select' && (
+            
+            {step === 'select' && (
               <div className="flex h-full">
                 <aside className="w-1/4 max-w-xs flex-shrink-0 bg-white border-r p-6 space-y-6 overflow-y-auto">
                   <h3 className="font-semibold text-lg">Filter Soal</h3>
-                  {/* ... Filter form (search, subject, difficulty) */}
                   <div className="space-y-2">
                     <label htmlFor="search" className="text-sm font-medium text-gray-700">Cari Soal</label>
                     <div className="relative">
@@ -261,13 +326,23 @@ export default function QuestionBankModal({ isOpen, onClose, topicId, onAssignme
                 <main className="flex-1 flex flex-col overflow-hidden">
                   <div className="flex-grow p-6 space-y-3 overflow-y-auto">
                     {isLoading && <p>Memuat...</p>}
-                    {!isLoading && bankedQuestions.map(q => (
-                      <div key={q.id} className="flex items-start p-4 border rounded-lg bg-white hover:shadow-md">
-                        <input type="checkbox" onChange={() => toggleQuestionSelection(q.id)} checked={selectedQuestions.includes(q.id)} className="h-4 w-4 mt-1" />
+                    {!isLoading && bankedQuestions.map((q) => (
+                      <div key={q.id} className="flex items-center p-4 border rounded-lg bg-white hover:shadow-md transition-shadow">
+                        <input
+                          type="checkbox"
+                          onChange={() => toggleQuestionSelection(q.id)}
+                          checked={selectedQuestions.includes(q.id)}
+                          className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        />
                         <div className="ml-4 text-sm flex-grow cursor-pointer" onClick={() => handleOpenDetailModal(q.id)}>
-                          <p className="font-medium text-gray-900">{q.questionText}</p>
-                          {/* ... (info mapel & kesulitan) */}
+                          <p className="font-medium text-gray-900 line-clamp-2">{q.questionText}</p>
+                          <div className="text-xs text-gray-500 mt-1">
+                            <span className="font-semibold">{q.subject.name}</span> &middot; <span className="capitalize">{q.difficulty.toLowerCase()}</span>
+                          </div>
                         </div>
+                        <button onClick={() => handleDeleteQuestion(q.id)} className="ml-4 p-2 text-gray-400 hover:text-red-600 rounded-full hover:bg-red-50 transition-colors">
+                          <Trash2 className="h-4 w-4" />
+                        </button>
                       </div>
                     ))}
                   </div>
@@ -276,19 +351,49 @@ export default function QuestionBankModal({ isOpen, onClose, topicId, onAssignme
                       {selectedQuestions.length} soal terpilih
                     </span>
                     <button
-                      onClick={handleCreateAssignmentFromBank}
+                      onClick={handleProceedToDetails}
                       disabled={selectedQuestions.length === 0 || isLoading}
-                      className="btn-primary disabled:bg-blue-300 disabled:cursor-not-allowed"
+                      className="btn-primary disabled:bg-blue-300 disabled:cursor-not-allowed flex items-center gap-2"
                     >
-                      Buat Tugas
+                      Selanjutnya <ArrowRight size={14} />
                     </button>
                   </div>
                 </main>
               </div>
             )}
-            {activeTab === 'create' && (
+
+            {step === 'details' && (
+              <div className="p-8 max-w-2xl mx-auto h-full overflow-y-auto">
+                  <h3 className="font-semibold text-xl text-gray-800 mb-6">Langkah 2: Lengkapi Detail Tugas</h3>
+                  <form onSubmit={handleCreateAssignmentFromBank} className="space-y-4">
+                      <div>
+                          <label className="block text-sm font-medium">Judul Tugas</label>
+                          <input type="text" name="title" value={assignmentDetails.title} onChange={handleDetailsChange} required className="input-form w-full" />
+                      </div>
+                      <div>
+                          <label className="block text-sm font-medium">Deskripsi (Opsional)</label>
+                          <textarea name="description" value={assignmentDetails.description} onChange={handleDetailsChange} rows={4} className="input-form w-full"></textarea>
+                      </div>
+                      <div>
+                          <label className="block text-sm font-medium">Tanggal Tenggat</label>
+                          <input type="datetime-local" name="dueDate" value={assignmentDetails.dueDate} onChange={handleDetailsChange} required className="input-form w-full" />
+                      </div>
+                      
+                      <div className="flex justify-between items-center pt-6 border-t mt-6">
+                           <button type="button" onClick={() => setStep('select')} className="btn-secondary">
+                               Kembali Memilih Soal
+                           </button>
+                           <button type="submit" disabled={isLoading} className="btn-primary">
+                               Buat Tugas Sekarang
+                           </button>
+                      </div>
+                  </form>
+              </div>
+            )}
+
+            {step === 'create' && (
               <div className="p-6 overflow-y-auto h-full">
-                <AddAssignmentFormOriginal
+                <AddAssignmentForm
                   topicId={topicId}
                   onSuccess={() => {
                     onAssignmentAdded();
@@ -297,9 +402,9 @@ export default function QuestionBankModal({ isOpen, onClose, topicId, onAssignme
                 />
               </div>
             )}
-            {activeTab === 'import' && (
+            {step === 'import' && (
               <ImportWordTab
-                onImportSuccess={() => setActiveTab('select')}
+                onImportSuccess={() => setStep('select')}
                 subjects={subjects}
                 difficulties={difficulties}
               />
@@ -313,7 +418,7 @@ export default function QuestionBankModal({ isOpen, onClose, topicId, onAssignme
         onClose={() => setIsDetailModalOpen(false)}
         questionId={editingQuestionId}
         onQuestionUpdated={() => {
-          fetchBankedQuestions(); // Refresh daftar soal setelah di-update
+          fetchBankedQuestions();
         }}
       />
     </div>
