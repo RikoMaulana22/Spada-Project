@@ -20,6 +20,7 @@ export interface Settings {
   homeHeroSubtitle?: string;
   homeHeroImage?: string;
   schoolProfile?: string;
+  footerText?: string;
 }
 
 export interface ClassInfo {

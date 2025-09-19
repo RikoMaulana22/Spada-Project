@@ -28,7 +28,7 @@ export const getSettings = async (req: Request, res: Response) => {
 
 export const updateSettings = async (req: Request, res: Response) => {
     // Ambil semua field teks dari req.body
-    const textFields = ['schoolName', 'homeHeroTitle', 'homeHeroSubtitle', 'schoolProfile'];
+    const textFields = ['schoolName', 'homeHeroTitle', 'homeHeroSubtitle', 'schoolProfile', 'footerText'];
     const files = req.files as { [fieldname: string]: Express.Multer.File[] };
 
     try {

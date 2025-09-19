@@ -118,7 +118,7 @@ export default function SettingsPage() {
                         <h3 className="text-lg font-semibold text-gray-900">Pengaturan Umum</h3>
                         <SettingInput id="schoolName" label="Nama Sekolah / Aplikasi" value={settings.schoolName} onChange={handleInputChange} helpText="Tampil di header utama."/>
                         <SettingImageUpload id="headerLogo" label="Logo Header" preview={previews.headerLogo} onChange={handleFileChange} helpText="Logo di pojok kiri atas halaman."/>
-                        <SettingImageUpload id="loginLogo" label="Logo Halaman Login" preview={previews.loginLogo} onChange={handleFileChange} helpText="Logo di halaman login Wali Kelas."/>
+                        <SettingImageUpload id="loginLogo" label="Logo Halaman Login" preview={previews.loginLogo} helpText="Logo di halaman login Wali Kelas."/>
                     </div>
 
                     {/* Bagian Halaman Depan */}
@@ -132,6 +132,11 @@ export default function SettingsPage() {
                      <div className="pt-8 space-y-6">
                         <h3 className="text-lg font-semibold text-gray-900">Profil Sekolah</h3>
                         <SettingTextarea id="schoolProfile" label="Profil Singkat Sekolah" value={settings.schoolProfile} onChange={handleInputChange} helpText="Tampilkan profil atau sejarah singkat sekolah di halaman depan."/>
+                    </div>
+                     {/* Bagian Footer */}
+                     <div className="pt-8 space-y-6">
+                        <h3 className="text-lg font-semibold text-gray-900">Footer</h3>
+                        <SettingInput id="footerText" label="Teks Footer" value={settings.footerText} onChange={handleInputChange} helpText="Teks yang akan ditampilkan di bagian bawah setiap halaman."/>
                     </div>
                 </div>
 
