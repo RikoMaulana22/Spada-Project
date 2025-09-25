@@ -10,12 +10,10 @@ export const checkRole = (roles: Role | Role[]) => {
             return res.status(401).json({ message: 'Otentikasi diperlukan, peran tidak ditemukan.' });
         }
 
-        // Ubah input 'roles' menjadi array agar mudah diperiksa
         const requiredRoles = Array.isArray(roles) ? roles : [roles];
 
-        // Cek apakah peran pengguna ada di dalam array peran yang diizinkan
         if (requiredRoles.includes(userRole as Role)) {
-            next(); // Peran cocok, lanjutkan
+            next(); 
         } else {
             res.status(403).json({ message: 'Akses ditolak. Anda tidak memiliki peran yang sesuai.' });
         }

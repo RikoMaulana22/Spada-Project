@@ -5,7 +5,7 @@ export interface User {
   id: number;
   fullName: string;
   username: string; // <-- Ini properti yang hilang
-  role: 'guru' | 'siswa' | 'admin';
+  role: 'guru' | 'siswa' | 'admin' | 'wali_kelas';
   email: string;
   createdAt?: string;
   nisn?: string | null; // Dibuat opsional karena tidak semua user punya
