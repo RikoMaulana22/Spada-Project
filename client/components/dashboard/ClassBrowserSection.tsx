@@ -53,7 +53,7 @@ const toggleSubject = (subjectId: number) => {
 
   return (
     <div className="bg-white p-6 rounded-lg shadow-md">
-      <h2 className="text-xl font-semibold text-gray-800">Telusuri Semua Kelas</h2>
+      <h2 className="text-xl font-bold text-blue-900 border-b-2 border-yellow-400 pb-2 mb-4">Telusuri Semua Kelas</h2>
       {isLoading ? <div className="mt-4"><AccordionSkeleton /></div> : (
         <div className="mt-4 space-y-1">
           {Object.keys(groupedSubjects).map((grade) => (

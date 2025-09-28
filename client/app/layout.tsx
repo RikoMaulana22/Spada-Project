@@ -1,6 +1,5 @@
-'use client'; // <-- PERBAIKAN 1: Jadikan ini Komponen Klien
+'use client';
 
-import type { Metadata } from "next"; // Metadata masih bisa digunakan di client component, walau tidak di-render di server
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/contexts/AuthContext";
@@ -11,16 +10,27 @@ import Footer from "@/components/layout/Footer";
 
 const inter = Inter({ subsets: ["latin"] });
 
-
-
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
   const pathname = usePathname();
-  // Kondisi untuk menampilkan Header dan Footer (tidak tampil di area admin)
-  const showPublicLayout = !pathname.startsWith('/admin');
+  
+  // Daftar halaman yang tidak menggunakan layout utama (Header/Footer)
+  const noLayoutPages = [
+    '/login', 
+    '/admin/login', 
+    '/login/wali-kelas'
+  ];
+
+  // Cek apakah halaman saat ini termasuk dalam daftar noLayoutPages
+  // atau jika merupakan bagian dari area admin.
+  const isLayoutHidden = noLayoutPages.includes(pathname) || pathname.startsWith('/admin/');
+
+  // Khusus untuk halaman admin/login, layout admin akan menangani dirinya sendiri,
+  // jadi kita perlu pastikan layout ini tidak ikut campur.
+  const showPublicLayout = !isLayoutHidden && !pathname.startsWith('/admin');
 
   return (
     <html lang="en" className="h-full">
@@ -32,13 +42,11 @@ export default function RootLayout({
             position="top-center"
             toastOptions={{ duration: 3000 }}
           />
-
-          {/* PERBAIKAN 2: Struktur layout yang lebih baik */}
+          
           {showPublicLayout ? (
             <>
               <Header />
               <main className="flex-grow container mx-auto px-4 sm:px-6 py-8">
-                {/* Wrapper tambahan untuk styling halaman publik */}
                 <div className="bg-white shadow-md rounded-lg p-6">
                   {children}
                 </div>
@@ -46,8 +54,7 @@ export default function RootLayout({
               <Footer />
             </>
           ) : (
-            // Untuk layout admin, kita hanya render children-nya secara langsung
-            // karena admin/layout.tsx sudah memiliki <main> dan strukturnya sendiri
+            // Untuk halaman login dan area admin, render children secara langsung.
             <>{children}</>
           )}
         </AuthProvider>

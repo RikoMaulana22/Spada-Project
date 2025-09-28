@@ -32,5 +32,8 @@ body {
   .btn-secondary {
     @apply bg-gray-200 text-gray-800 font-semibold py-2 px-4 rounded-lg hover:bg-gray-300 disabled:bg-gray-100 transition-colors;
   }
-  /* ... kelas kustom lainnya ... */
-}
+ .input-form {
+      @apply w-full px-4 py-3 text-gray-800 bg-white border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors;
+  
+   } 
+   }

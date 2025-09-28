@@ -1,6 +1,5 @@
 // Path: server/src/routes/assignment.routes.ts
 import { Router } from 'express';
-// PERUBAHAN: Impor fungsi controller yang baru
 import { createAssignmentForTopic, getAssignmentsForTopic, getAssignmentById, 
         getMyAssignments, updateAssignment,getAssignmentSubmissions,gradeSubmission,createAssignmentFromBank 
          } from '../controllers/assignment.controller';

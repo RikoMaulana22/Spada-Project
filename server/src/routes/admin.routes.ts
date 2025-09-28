@@ -1,5 +1,4 @@
 import { Router } from 'express';
-// --- Impor fungsi baru dari controller ---
 import { getUsers,
      createUser, 
      updateUser, 
@@ -24,37 +23,34 @@ import { getUsers,
 
     
   } from '../controllers/admin.controller';
-import { authenticate } from '../middlewares/auth.middleware'; // Pastikan authenticate diimpor
-import { checkRole } from '../middlewares/role.middleware';   // Pastikan checkRole diimpor
-import { upload } from '../middlewares/upload.middleware'; // Impor middleware upload
+import { authenticate } from '../middlewares/auth.middleware'; 
+import { checkRole } from '../middlewares/role.middleware';   
+import { upload } from '../middlewares/upload.middleware'; 
 
 
 const router = Router();
 
-// Semua rute di file ini akan memiliki prefix /api/admin
 router.get('/test/walikelas', testGetAllWaliKelas); 
 
-// GET /api/admin/users
 router.get('/users', authenticate, checkRole('admin'), getUsers);
 
 router.delete('/classes/:id', authenticate, checkRole('admin'), deleteClass);
 
 
-// POST /api/admin/users
 router.post('/users', authenticate, checkRole('admin'), createUser);
 
 // --- PERBAIKI RUTE UPDATE DAN DELETE DI SINI ---
 router.put('/users/:id', authenticate, checkRole('admin'), updateUser);
 router.delete('/users/:id', authenticate, checkRole('admin'), deleteUser);
 
-// --- RUTE BARU: Untuk Manajemen Materi Global (Perlu perbaikan) ---
+// --- RUTE BARU: Untuk Manajemen Materi Global ---
 router.get('/materials/global', authenticate, checkRole('admin'), getGlobalMaterialsAdmin);
 router.post('/materials/global', authenticate, checkRole('admin'), upload.single('file'), uploadGlobalMaterial);
 router.delete('/materials/global/:id', authenticate, checkRole('admin'), deleteGlobalMaterial);
-// --- Rute untuk Laporan (Perlu perbaikan) ---
+// --- Rute untuk Laporan ---
 router.get('/reports/attendance', authenticate, checkRole('admin'), getAttendanceReport);
 router.get('/reports/grades', authenticate, checkRole('admin'), getGradeReport);
-// --- RUTE BARU UNTUK KELOLA KELAS (Perlu perbaikan) ---
+// --- RUTE BARU UNTUK KELOLA KELAS 
 // --- RUTE UNTUK MANAJEMEN KELAS ---
 router.get('/classes', authenticate, checkRole('admin'), getAllClasses);
 router.get('/teachers', authenticate, checkRole('admin'), getAllTeachers);

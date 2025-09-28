@@ -47,7 +47,7 @@ export default function TodayScheduleSection({ schedules, isLoading }: TodaySche
     
     return (
         <div className="bg-white p-6 rounded-lg shadow-md">
-            <h2 className="text-xl font-semibold mb-4 text-gray-800">Jadwal Hari Ini ({dayNames[new Date().getDay()]})</h2>
+            <h2 className="text-xl font-bold text-blue-900 border-b-2 border-yellow-400 pb-2 mb-4">Jadwal Hari Ini ({dayNames[new Date().getDay()]})</h2>
             <div className="space-y-3">
                 {isLoading ? (
                     // Tampilkan skeleton saat loading

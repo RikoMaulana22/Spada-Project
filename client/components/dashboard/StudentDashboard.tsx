@@ -10,7 +10,7 @@ import GlobalMaterialsSection from './GlobalMaterialsSection';
 import TodayScheduleSection from './TodayScheduleSection';
 
 export default function StudentDashboard({ user }: { user: User }) {
-  // State untuk semua data yang akan ditampilkan
+  // State dan logika pengambilan data tidak berubah
   const [myClasses, setMyClasses] = useState<ClassSummary[]>([]);
   const [groupedSubjects, setGroupedSubjects] = useState<GroupedSubjects>({});
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
@@ -18,36 +18,21 @@ export default function StudentDashboard({ user }: { user: User }) {
   const [mySchedules, setMySchedules] = useState<ScheduleItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Fungsi untuk mengambil semua data secara bersamaan
   const fetchData = useCallback(async () => {
     setIsLoading(true);
     try {
-      const myClassesPromise = apiClient.get('/classes/student');
-      const groupedSubjectsPromise = apiClient.get('/subjects/grouped');
-      const announcementsPromise = apiClient.get('/announcements');
-      const globalMaterialsPromise = apiClient.get('/materials/global');
-      const schedulePromise = apiClient.get('/schedules/my');
-      
-      const [
-        myClassesResponse, 
-        groupedSubjectsResponse, 
-        announcementsResponse, 
-        globalMaterialsResponse,
-        schedulesResponse
-      ] = await Promise.all([
-        myClassesPromise,
-        groupedSubjectsPromise,
-        announcementsPromise,
-        globalMaterialsPromise,
-        schedulePromise,
+      const [ myClassesResponse, groupedSubjectsResponse, announcementsResponse, globalMaterialsResponse, schedulesResponse ] = await Promise.all([
+        apiClient.get('/classes/student'),
+        apiClient.get('/subjects/grouped'),
+        apiClient.get('/announcements'),
+        apiClient.get('/materials/global'),
+        apiClient.get('/schedules/my'),
       ]);
-
       setMyClasses(myClassesResponse.data);
       setGroupedSubjects(groupedSubjectsResponse.data);
       setAnnouncements(announcementsResponse.data);
       setGlobalMaterials(globalMaterialsResponse.data);
       setMySchedules(schedulesResponse.data);
-
     } catch (error) {
       console.error("Gagal mengambil data dashboard siswa:", error);
     } finally {
@@ -60,23 +45,33 @@ export default function StudentDashboard({ user }: { user: User }) {
   }, [fetchData]);
 
   return (
-    <div className="container mx-auto p-4 md:p-8 space-y-8 text-gray-800">
-      <h1 className="text-3xl  font-bold">Dashboard Siswa</h1>
-      <p className="text-gray-600">Selamat datang, {user.fullName}!</p>
+    // Latar belakang diubah menjadi abu-abu netral yang sangat muda
+    <div className="w-full min-h-full bg-gray-50 p-4 sm:p-6 lg:p-8">
       
-      {/* Tampilkan semua section baru */}
-      <AnnouncementSection isLoading={isLoading} announcements={announcements} />
-      <TodayScheduleSection isLoading={isLoading} schedules={mySchedules} />
-      <GlobalMaterialsSection isLoading={isLoading} materials={globalMaterials} />
-      
-      {/* Section yang sudah ada sebelumnya */}
-      <MyClassesSection isLoading={isLoading} myClasses={myClasses} />
-      <ClassBrowserSection 
-        isLoading={isLoading} 
-        groupedSubjects={groupedSubjects} 
-        myClasses={myClasses}
-        onEnrolSuccess={fetchData} 
-      />
+      {/* Header Dashboard */}
+      <div className="mb-8">
+        {/* Warna judul utama diubah menjadi biru tua */}
+        <h1 className="text-3xl font-bold text-blue-900">Dashboard Siswa</h1>
+        <p className="text-gray-600 mt-1">Selamat datang kembali, {user.fullName}! 👋</p>
+      </div>
+
+      {/* Grid Layout Utama (Struktur tidak berubah) */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+        <div className="lg:col-span-2 space-y-8">
+          <MyClassesSection isLoading={isLoading} myClasses={myClasses} />
+          <ClassBrowserSection 
+            isLoading={isLoading} 
+            groupedSubjects={groupedSubjects} 
+            myClasses={myClasses}
+            onEnrolSuccess={fetchData} 
+          />
+        </div>
+        <div className="lg:col-span-1 space-y-8">
+          <AnnouncementSection isLoading={isLoading} announcements={announcements} />
+          <TodayScheduleSection isLoading={isLoading} schedules={mySchedules} />
+          <GlobalMaterialsSection isLoading={isLoading} materials={globalMaterials} />
+        </div>
+      </div>
     </div>
   );
 }

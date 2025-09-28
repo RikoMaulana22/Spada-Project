@@ -22,7 +22,7 @@ export default function AnnouncementSection({ announcements, isLoading }: Announ
   if (isLoading) {
     return (
         <div>
-            <h2 className="text-xl font-semibold mb-4 text-gray-800">Pengumuman Terbaru</h2>
+            <h2 className="text-xl font-bold text-blue-900 border-b-2 border-yellow-400 pb-2 mb-4">Pengumuman Terbaru</h2>
             <div className="space-y-4">
                 <AnnouncementSkeleton />
             </div>

@@ -11,18 +11,16 @@ export default function DashboardPage() {
   const router = useRouter();
 
   useEffect(() => {
-    // Jangan lakukan apa-apa selama data masih loading
     if (isLoading) {
       return;
     }
 
-    // Jika loading selesai dan tidak ada user, arahkan ke login
     if (!user) {
       router.push('/login');
       return;
     }
 
-    // <-- PERUBAHAN UTAMA DI SINI -->
+
     // Jika user adalah wali_kelas, arahkan ke dashboard khusus mereka
     if (user.role === 'wali_kelas') {
       router.push('/dashboard/wali-kelas');
@@ -38,8 +36,6 @@ export default function DashboardPage() {
     );
   }
 
-  // Jika user adalah wali kelas, tampilkan pesan pengalihan
-  // Ini untuk mencegah halaman kosong muncul sekejap sebelum redirect
   if (user?.role === 'wali_kelas') {
     return (
         <div className="flex min-h-screen items-center justify-center">
@@ -48,7 +44,6 @@ export default function DashboardPage() {
     );
   }
 
-  // Logika yang sudah ada untuk guru dan siswa tetap dipertahankan
   if (user?.role === 'guru') {
     return <TeacherDashboard user={user} />;
   }
@@ -57,6 +52,5 @@ export default function DashboardPage() {
     return <StudentDashboard user={user} />;
   }
 
-  // Fallback jika terjadi kondisi aneh
   return null;
 }

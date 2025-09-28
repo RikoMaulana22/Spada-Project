@@ -23,7 +23,9 @@ export default function MyClassesSection({ isLoading, myClasses }: MyClassesSect
 
   return (
     <div className="bg-white p-6 rounded-lg shadow-md">
-      <h2 className="text-xl font-semibold mb-4 text-gray-800">Kelas yang Anda Ikuti</h2>
+      <h2 className="text-xl font-bold text-blue-900 border-b-2 border-yellow-400 pb-2 mb-4">
+        Kelas yang Anda Ikuti
+      </h2>
       {isLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {/* Tampilkan 3 skeleton saat loading */}

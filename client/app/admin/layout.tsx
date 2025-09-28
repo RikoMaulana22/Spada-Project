@@ -14,16 +14,14 @@ export default function AdminLayout({
 }) {
   const { user, isLoading, settings, logout } = useAuth() as { user: GlobalUserType | null, isLoading: boolean, settings: Settings | null, logout: () => void };
   const router = useRouter();
-  const pathname = usePathname(); // <-- 2. Dapatkan path URL saat ini
+  const pathname = usePathname(); 
 
   useEffect(() => {
-    // Jangan lakukan apa-apa selama data masih loading
     if (isLoading) {
       return;
     }
 
-    // --- 3. LOGIKA PROTEKSI DIPERBARUI ---
-    // Jika kita TIDAK di halaman login DAN pengguna bukan admin, tendang keluar.
+    // --- LOGIKA PROTEKSI 
     if (pathname !== '/admin/login' && (!user || user.role !== 'admin')) {
       router.push('/admin/login');
     }
@@ -36,7 +34,7 @@ export default function AdminLayout({
 
   }, [user, isLoading, router, pathname]);
 
-  // --- 4. LOGIKA TAMPILAN DIPERBARUI ---
+  // --- 4. LOGIKA TAMPILAN 
 
   // Jika kita berada di halaman login, langsung tampilkan isinya (form login).
   if (pathname === '/admin/login') {
