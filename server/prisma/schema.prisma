@@ -330,7 +330,9 @@ model Submission {
   fileUrl         String?
   student         User       @relation(fields: [studentId], references: [id], onDelete: Cascade)
   studentId       Int
-  
+  essayScore      Float?   // Nilai manual untuk esai dari guru
+  essayFeedback   String?  @db.Text // Feedback manual untuk esai dari guru
+
   assignment      Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
   assignmentId    Int
 

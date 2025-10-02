@@ -7,9 +7,9 @@ import apiClient from '@/lib/axios';
 import toast from 'react-hot-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import QuizTimer from '@/components/quiz/QuizTimer';
-import { FaArrowLeft, FaEye } from 'react-icons/fa';
+import { FaArrowLeft, FaEye, FaExclamationTriangle } from 'react-icons/fa';
 
-// Definisikan tipe data
+// Tipe data diperbarui agar lebih tangguh
 interface Option {
   id: number;
   optionText: string;
@@ -27,7 +27,7 @@ interface AssignmentDetails {
   title: string;
   description: string;
   timeLimit: number | null;
-  type: 'pilgan' | 'esai';
+  type: 'pilgan' | 'esai' | 'link'; 
   questions: AssignmentQuestion[];
   topic: {
     class: {
@@ -44,22 +44,19 @@ export default function AssignmentPage() {
   const router = useRouter();
   const assignmentId = params.id;
   const { user } = useAuth();
-  const [essayAnswers, setEssayAnswers] = useState<Record<number, string>>({});
-
+  
   const [assignment, setAssignment] = useState<AssignmentDetails | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const [answers, setAnswers] = useState<Record<number, number>>({});
+  const [essayAnswers, setEssayAnswers] = useState<Record<number, string>>({});
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [startTime, setStartTime] = useState<Date | null>(null);
 
   const [currentPage, setCurrentPage] = useState(1);
   const questionsPerPage = 5;
-
-  const handleEssayChange = (questionId: number, value: string) => {
-    setEssayAnswers(prev => ({ ...prev, [questionId]: value }));
-  };
 
   const fetchData = useCallback(async () => {
     if (!assignmentId) return;
@@ -67,9 +64,11 @@ export default function AssignmentPage() {
     try {
       const response = await apiClient.get(`/assignments/${assignmentId}`);
       setAssignment(response.data);
-      setStartTime(new Date());
+      if (response.data.type === 'pilgan' || response.data.type === 'esai') {
+        setStartTime(new Date());
+      }
     } catch (err) {
-      setError("Gagal memuat kuis atau kuis tidak ditemukan.");
+      setError("Gagal memuat tugas atau tugas tidak ditemukan.");
       console.error(err);
     } finally {
       setIsLoading(false);
@@ -84,7 +83,11 @@ export default function AssignmentPage() {
     setAnswers(prev => ({ ...prev, [questionId]: optionId }));
   };
 
-  const handleSubmit = useCallback(async (isAutoSubmit: boolean = false) => {
+  const handleEssayChange = (questionId: number, value: string) => {
+    setEssayAnswers(prev => ({ ...prev, [questionId]: value }));
+  };
+
+const handleSubmit = useCallback(async (isAutoSubmit: boolean = false) => {
     if (!assignment || isSubmitting || !startTime) {
       return;
     }
@@ -111,8 +114,25 @@ export default function AssignmentPage() {
       try {
         const response = await apiClient.post(`/submissions/assignment/${assignmentId}`, payload);
         toast.success(response.data.message || "Jawaban berhasil dikumpulkan!", { id: toastId });
-        const submissionId = response.data.submission.id;
-        router.push(`/submission/${submissionId}/review`);
+
+        // ==================================================================
+        // PERBAIKAN UTAMA DI SINI
+        // ==================================================================
+        // Cek tipe submission dari respons yang dikirim oleh backend
+        if (response.data.submissionType === 'esai') {
+          // Jika esai, arahkan kembali ke halaman kelas
+          toast('Anda akan dikembalikan ke halaman kelas.', { icon: 'ℹ️' });
+          setTimeout(() => {
+            if (assignment) {
+              router.push(`/kelas/${assignment.topic.class.id}`);
+            }
+          }, 2000); // Tunggu 2 detik sebelum redirect
+        } else {
+          // Jika pilihan ganda, baru arahkan ke halaman review
+          const submissionId = response.data.submission.id;
+          router.push(`/submission/${submissionId}/review`);
+        }
+
       } catch (error: any) {
         toast.error(error.response?.data?.message || 'Gagal mengumpulkan jawaban.', { id: toastId });
       } finally {
@@ -120,13 +140,13 @@ export default function AssignmentPage() {
       }
     }
   }, [assignment, isSubmitting, answers, assignmentId, router, startTime, essayAnswers]);
-  
+
   const handleManualSubmit = (e: FormEvent) => {
     e.preventDefault();
     handleSubmit(false);
   };
 
-  if (isLoading) return <div className="p-8 text-center text-lg">Memuat Kuis...</div>;
+  if (isLoading) return <div className="p-8 text-center text-lg">Memuat Tugas...</div>;
   if (error) return <div className="p-8 text-center text-red-500">{error}</div>;
   if (!assignment) return notFound();
   
@@ -134,8 +154,9 @@ export default function AssignmentPage() {
   const indexOfFirstQuestion = indexOfLastQuestion - questionsPerPage;
   const currentQuestions = assignment.questions.slice(indexOfFirstQuestion, indexOfLastQuestion);
   const totalPages = Math.ceil(assignment.questions.length / questionsPerPage);
-
+  
   const isTeacher = user?.role === 'guru' && user?.id === assignment?.topic?.class?.teacher?.id;
+  const isWorkable = assignment.type === 'pilgan' || assignment.type === 'esai';
 
   return (
     <div className="container mx-auto p-4 md:p-8 text-gray-700">
@@ -143,8 +164,8 @@ export default function AssignmentPage() {
         <FaArrowLeft />
         <span>Kembali ke Kelas</span>
       </Link>
-      
-      {user?.role === 'siswa' && assignment.timeLimit && assignment.timeLimit > 0 && (
+
+      {user?.role === 'siswa' && isWorkable && assignment.timeLimit && assignment.timeLimit > 0 && (
         <QuizTimer
           initialMinutes={assignment.timeLimit}
           onTimeUp={() => handleSubmit(true)}
@@ -158,8 +179,8 @@ export default function AssignmentPage() {
             <p className="text-gray-600 mt-2">{assignment.description}</p>
           </div>
           {isTeacher && (
-            <Link 
-              href={`/tugas/${assignment.id}/submissions`} 
+            <Link
+              href={`/tugas/${assignment.id}/submissions`}
               className="flex items-center gap-2 bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-700 whitespace-nowrap transition-all transform hover:scale-105"
             >
               <FaEye />
@@ -174,96 +195,106 @@ export default function AssignmentPage() {
 
       {user?.role === 'siswa' && (
         <div className="bg-white p-6 rounded-lg text-gray-800 shadow-md">
-            <form onSubmit={handleManualSubmit}>
-                <h2 className="text-xl font-semibold mb-6 border-b pb-3">Soal</h2>
-
-                {assignment.type === 'pilgan' && (
-                    <div className="space-y-8">
-                    {currentQuestions.map((assignmentQuestion, index) => {
-                        const question = assignmentQuestion.question;
-                        return (
-                        <div key={question.id}>
-                            <p className="font-semibold text-gray-800">{indexOfFirstQuestion + index + 1}. {question.questionText}</p>
-                            <div className="mt-4 space-y-3 pl-4">
-                            {question.options.map((option) => (
-                                <label key={option.id} className="flex items-center gap-3 cursor-pointer p-2 rounded-md hover:bg-gray-100">
-                                <input
-                                    type="radio"
-                                    name={`question_${question.id}`}
-                                    value={option.id}
-                                    checked={answers[question.id] === option.id}
-                                    onChange={() => handleOptionChange(question.id, option.id)}
-                                    className="form-radio h-4 w-4 text-blue-600"
-                                />
-                                <span>{option.optionText}</span>
-                                </label>
-                            ))}
-                            </div>
-                        </div>
-                        )
-                    })}
-                    </div>
-                )}
-
-                {assignment.type === 'esai' && (
-                    <div className="space-y-8">
-                    {currentQuestions.map((assignmentQuestion, index) => {
-                        const question = assignmentQuestion.question;
-                        return (
-                        <div key={question.id}>
-                            <p className="font-semibold text-gray-800">{indexOfFirstQuestion + index + 1}. {question.questionText}</p>
-                            <textarea
-                            value={essayAnswers[question.id] || ''}
-                            onChange={(e) => handleEssayChange(question.id, e.target.value)}
-                            rows={8}
-                            className="mt-4 w-full p-3 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                            placeholder={`Ketik jawaban untuk soal ${indexOfFirstQuestion + index + 1} di sini...`}
-                            />
-                        </div>
-                        )
-                    })}
-                    </div>
-                )}
-                
-                {currentPage === totalPages && (
-                    <div className="mt-8 pt-6 border-t flex justify-end">
-                        <button
-                            type="submit"
-                            disabled={isSubmitting}
-                            className="px-8 py-3 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 transition-colors disabled:bg-green-400"
-                        >
-                            {isSubmitting ? 'Mengirim...' : 'Kumpulkan Jawaban'}
-                        </button>
-                    </div>
-                )}
-            </form>
-            
-            <div className="mt-8 pt-6 border-t flex justify-between items-center">
-                <button
-                    type="button"
-                    onClick={() => setCurrentPage(prev => prev - 1)}
-                    disabled={currentPage === 1}
-                    className="px-6 py-2 bg-gray-300 text-gray-800 font-semibold rounded-lg hover:bg-gray-400 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                    Sebelumnya
-                </button>
-
-                <span className="text-sm font-medium">
-                    Halaman {currentPage} dari {totalPages}
-                </span>
-
-                {currentPage < totalPages && (
-                    <button
-                        type="button"
-                        onClick={() => setCurrentPage(prev => prev + 1)}
-                        className="px-6 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700"
-                    >
-                        Selanjutnya
-                    </button>
-                )}
-                
-                {currentPage === totalPages && <div style={{width: '120px'}}></div>}
+          {!isWorkable ? (
+            <div className="text-center py-10">
+              <FaExclamationTriangle className="mx-auto text-4xl text-yellow-500 mb-4" />
+              <h2 className="text-xl font-bold">Tugas Tidak Dapat Dikerjakan di Halaman Ini</h2>
+              <p className="text-gray-600 mt-2">Tipe tugas ini mungkin berupa link atau file yang harus diakses secara terpisah.</p>
             </div>
+          ) : (
+            <form onSubmit={handleManualSubmit}>
+              <h2 className="text-xl font-semibold mb-6 border-b pb-3">Soal</h2>
+
+              {assignment.type === 'pilgan' && (
+                <div className="space-y-8">
+                  {currentQuestions.map((assignmentQuestion, index) => {
+                    const question = assignmentQuestion.question;
+                    return (
+                      <div key={question.id}>
+                        <p className="font-semibold text-gray-800">{indexOfFirstQuestion + index + 1}. {question.questionText}</p>
+                        <div className="mt-4 space-y-3 pl-4">
+                          {question.options.map((option) => (
+                            <label key={option.id} className="flex items-center gap-3 cursor-pointer p-2 rounded-md hover:bg-gray-100">
+                              <input
+                                type="radio"
+                                name={`question_${question.id}`}
+                                value={option.id}
+                                checked={answers[question.id] === option.id}
+                                onChange={() => handleOptionChange(question.id, option.id)}
+                                className="form-radio h-4 w-4 text-blue-600"
+                              />
+                              <span>{option.optionText}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+
+              {assignment.type === 'esai' && (
+                <div className="space-y-8">
+                  {currentQuestions.map((assignmentQuestion, index) => {
+                    const question = assignmentQuestion.question;
+                    return (
+                      <div key={question.id}>
+                        <p className="font-semibold text-gray-800">{indexOfFirstQuestion + index + 1}. {question.questionText}</p>
+                        <textarea
+                          value={essayAnswers[question.id] || ''}
+                          onChange={(e) => handleEssayChange(question.id, e.target.value)}
+                          rows={8}
+                          className="mt-4 w-full p-3 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                          placeholder={`Ketik jawaban untuk soal ${indexOfFirstQuestion + index + 1} di sini...`}
+                        />
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+
+              {totalPages > 0 && currentPage === totalPages && (
+                <div className="mt-8 pt-6 border-t flex justify-end">
+                  <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="px-8 py-3 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 transition-colors disabled:bg-green-400"
+                  >
+                    {isSubmitting ? 'Mengirim...' : 'Kumpulkan Jawaban'}
+                  </button>
+                </div>
+              )}
+            </form>
+          )}
+
+          {isWorkable && totalPages > 1 && (
+            <div className="mt-8 pt-6 border-t flex justify-between items-center">
+              <button
+                type="button"
+                onClick={() => setCurrentPage(prev => prev - 1)}
+                disabled={currentPage === 1}
+                className="px-6 py-2 bg-gray-300 text-gray-800 font-semibold rounded-lg hover:bg-gray-400 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Sebelumnya
+              </button>
+
+              <span className="text-sm font-medium">
+                Halaman {currentPage} dari {totalPages}
+              </span>
+
+              {currentPage < totalPages ? (
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage(prev => prev + 1)}
+                  className="px-6 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700"
+                >
+                  Selanjutnya
+                </button>
+              ) : (
+                <div style={{ width: '120px' }}></div>
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>

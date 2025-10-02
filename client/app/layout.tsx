@@ -21,7 +21,6 @@ export default function RootLayout({
   const noLayoutPages = [
     '/login', 
     '/admin/login', 
-    '/login/wali-kelas'
   ];
 
   // Cek apakah halaman saat ini termasuk dalam daftar noLayoutPages

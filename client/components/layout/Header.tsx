@@ -34,7 +34,7 @@ export default function Header() {
 
         // Jika peran adalah wali_kelas, ubah halaman redirect
         if (user.role === 'wali_kelas') {
-            redirectPath = '/login/wali-kelas';
+            redirectPath = '/login';
         }else if (user.role === 'admin') {
             redirectPath = '/admin/login'; // Arahkan admin ke sini
         }

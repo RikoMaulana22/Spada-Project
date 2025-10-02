@@ -85,21 +85,32 @@ export const loginUser = async (req: Request, res: Response, next: NextFunction)
       res.status(401).json({ message: 'Password salah' });
       return;
     }
+    
+    // --- VALIDASI KHUSUS WALI KELAS ---
+    if (user.role === 'wali_kelas') {
+        const homeroomClass = await prisma.class.findFirst({
+            where: { homeroomTeacherId: user.id }
+        });
 
-    // --- PERBAIKAN DI SINI ---
-    // Buat payload yang sesuai dengan interface TokenPayload (hanya userId dan role)
+        if (!homeroomClass) {
+            res.status(403).json({ message: 'Akses ditolak. Anda bukan wali kelas.' });
+            return;
+        }
+    }
+    // --- AKHIR VALIDASI ---
+
     const payload: TokenPayload = { userId: user.id, role: user.role };
     const token = jwt.sign(payload, process.env.JWT_SECRET as string, { expiresIn: '1d' });
-    // --- AKHIR PERBAIKAN ---
 
     res.status(200).json({
       message: 'Login berhasil!',
-      token, // Token yang lebih ramping dan aman
-      user: { // Data lengkap user tetap dikirim di body respons, ini sudah benar
+      token,
+      user: {
         id: user.id,
         username: user.username,
         fullName: user.fullName,
         role: user.role,
+        email: user.email,
       },
     });
   } catch (error) {

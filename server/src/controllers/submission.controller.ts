@@ -15,7 +15,6 @@ export const submitAssignment = async (req: AuthRequest, res: Response) => {
     }
 
     try {
-        // Langkah 1: Ambil detail tugas dan jumlah percobaan sebelumnya
         const assignment = await prisma.assignment.findUnique({
             where: { id: Number(assignmentId) },
             include: {
@@ -40,15 +39,13 @@ export const submitAssignment = async (req: AuthRequest, res: Response) => {
             return res.status(404).json({ message: "Tugas tidak ditemukan." });
         }
 
-        // Langkah 2: Validasi Batas Pengerjaan
-        const attemptLimit = assignment.attemptLimit ?? 1; // Default 1 jika null
+        const attemptLimit = assignment.attemptLimit ?? 1;
         const currentAttemptCount = assignment._count.submissions;
 
         if (currentAttemptCount >= attemptLimit) {
             return res.status(403).json({ message: 'Anda telah mencapai batas maksimal pengerjaan untuk tugas ini.' });
         }
 
-        // Langkah 3: Hitung skor jika Pilihan Ganda, atau set null untuk Esai
         let score: number | null = null;
         if (assignment.type === 'pilgan') {
             if (!answers || typeof answers !== 'object') {
@@ -62,10 +59,9 @@ export const submitAssignment = async (req: AuthRequest, res: Response) => {
                     correctCount++;
                 }
             });
-            score = assignment.questions.length > 0 ? (correctCount / assignment.questions.length) * 100 : 0;
+            score = assignment.questions.length > 0 ? parseFloat(((correctCount / assignment.questions.length) * 100).toFixed(2)) : 0;
         }
 
-        // Langkah 4: Simpan jawaban ke database
         const newSubmission = await prisma.submission.create({
             data: {
                 studentId,
@@ -79,13 +75,12 @@ export const submitAssignment = async (req: AuthRequest, res: Response) => {
             }
         });
 
-        // Langkah 5: Kirim respons yang sesuai ke frontend
         if (assignment.type === 'esai') {
             res.status(201).json({
                 message: "Tugas esai Anda berhasil dikumpulkan!",
                 submissionType: 'esai'
             });
-        } else { // 'pilgan'
+        } else { 
             res.status(201).json({
                 message: "Jawaban Anda berhasil dikumpulkan!",
                 submission: newSubmission,
@@ -99,22 +94,23 @@ export const submitAssignment = async (req: AuthRequest, res: Response) => {
 };
 
 
+
 export const getSubmissionReview = async (req: AuthRequest, res: Response): Promise<void> => {
     const { id: submissionId } = req.params;
     const userId = req.user?.userId;
+
     try {
         const submission = await prisma.submission.findUnique({
             where: { id: Number(submissionId) },
             include: {
                 assignment: {
                     include: {
+                        topic: { select: { class: { select: { id: true } } } },
                         questions: {
                             orderBy: { order: 'asc' },
                             include: {
                                 question: {
-                                    include: {
-                                        options: true
-                                    }
+                                    include: { options: true }
                                 }
                             }
                         }
@@ -127,7 +123,10 @@ export const getSubmissionReview = async (req: AuthRequest, res: Response): Prom
             res.status(404).json({ message: "Data pengerjaan tidak ditemukan." });
             return;
         }
+
+        // PERBAIKAN: Hapus validasi yang membatasi hanya untuk pilgan
         res.status(200).json(submission);
+
     } catch (error) {
         console.error("Gagal mengambil data review:", error);
         res.status(500).json({ message: "Gagal mengambil data review." });
@@ -314,7 +313,8 @@ export const getSubmissionsForAssignment = async (req: AuthRequest, res: Respons
 // --- FUNGSI BARU: Guru memberikan/memperbarui nilai ---
 export const gradeSubmission = async (req: AuthRequest, res: Response): Promise<void> => {
     const { id: submissionId } = req.params;
-    const { score } = req.body;
+    // Ambil 'feedback' juga dari body
+    const { score, feedback } = req.body; 
     const teacherId = req.user?.userId;
 
     const scoreValue = parseFloat(score);
@@ -324,40 +324,38 @@ export const gradeSubmission = async (req: AuthRequest, res: Response): Promise<
     }
 
     try {
-        const submission = await prisma.submission.findUnique({
-            where: { id: Number(submissionId) },
-            select: {
+        const submission = await prisma.submission.findFirst({
+            where: { 
+                id: Number(submissionId),
                 assignment: {
-                    select: {
-                        topic: {
-                            select: {
-                                class: {
-                                    select: { teacherId: true }
-                                }
-                            }
+                    topic: {
+                        class: {
+                            teacherId: teacherId
                         }
                     }
                 }
-            }
+             },
         });
 
         if (!submission) {
-            res.status(404).json({ message: 'Submisi tidak ditemukan.' });
+            res.status(404).json({ message: 'Submisi tidak ditemukan atau Anda tidak berhak menilai submisi ini.' });
             return;
         }
 
-        if (submission.assignment.topic?.class?.teacherId !== teacherId) {
-            res.status(403).json({ message: 'Akses ditolak. Anda tidak berhak menilai submisi ini.' });
-            return;
-        }
-
-        const updatedSubmission = await prisma.submission.update({
-            where: { id: Number(submissionId) },
-            data: { score: scoreValue },
-        });
+        // PERBAIKAN: Simpan ke 'essayScore' dan 'essayFeedback'
+        // Gunakan payload bertipe any untuk menghindari error kompilasi jika properti tidak ada di tipe Prisma
+                const updateData: any = {
+                    essayScore: scoreValue,
+                    essayFeedback: feedback,
+                };
+                const updatedSubmission = await prisma.submission.update({
+                    where: { id: Number(submissionId) },
+                    data: updateData,
+                });
 
         res.status(200).json(updatedSubmission);
     } catch (error) {
+        console.error("Gagal memberikan nilai:", error);
         res.status(500).json({ message: 'Gagal memberikan nilai.' });
     }
 };
