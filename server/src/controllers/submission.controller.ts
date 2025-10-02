@@ -15,20 +15,18 @@ export const submitAssignment = async (req: AuthRequest, res: Response) => {
     }
 
     try {
-        // Langkah 1: Ambil detail tugas dan jumlah percobaan sebelumnya dalam satu query
+        // Langkah 1: Ambil detail tugas dan jumlah percobaan sebelumnya
         const assignment = await prisma.assignment.findUnique({
             where: { id: Number(assignmentId) },
             include: {
                 questions: {
                     include: {
                         question: {
-                            include: {
-                                options: true
-                            }
+                            include: { options: true }
                         }
                     }
                 },
-                _count: { // Menghitung jumlah submission yang sudah ada
+                _count: {
                     select: {
                         submissions: {
                             where: { studentId: studentId }
@@ -42,17 +40,20 @@ export const submitAssignment = async (req: AuthRequest, res: Response) => {
             return res.status(404).json({ message: "Tugas tidak ditemukan." });
         }
 
-        // Langkah 2: Validasi Batas Pengerjaan (Attempt Limit)
-        const attemptLimit = assignment.attemptLimit ?? 1; // Default 1 jika tidak diset
+        // Langkah 2: Validasi Batas Pengerjaan
+        const attemptLimit = assignment.attemptLimit ?? 1; // Default 1 jika null
         const currentAttemptCount = assignment._count.submissions;
 
         if (currentAttemptCount >= attemptLimit) {
             return res.status(403).json({ message: 'Anda telah mencapai batas maksimal pengerjaan untuk tugas ini.' });
         }
 
-        // Langkah 3: Hitung skor jika ini adalah Pilihan Ganda
-        let score = null;
-        if (assignment.type === 'pilgan' && answers) {
+        // Langkah 3: Hitung skor jika Pilihan Ganda, atau set null untuk Esai
+        let score: number | null = null;
+        if (assignment.type === 'pilgan') {
+            if (!answers || typeof answers !== 'object') {
+                return res.status(400).json({ message: "Format jawaban pilihan ganda tidak valid." });
+            }
             let correctCount = 0;
             assignment.questions.forEach(aq => {
                 const question = aq.question;
@@ -61,7 +62,7 @@ export const submitAssignment = async (req: AuthRequest, res: Response) => {
                     correctCount++;
                 }
             });
-            score = (correctCount / assignment.questions.length) * 100;
+            score = assignment.questions.length > 0 ? (correctCount / assignment.questions.length) * 100 : 0;
         }
 
         // Langkah 4: Simpan jawaban ke database
@@ -78,9 +79,19 @@ export const submitAssignment = async (req: AuthRequest, res: Response) => {
             }
         });
 
-        // Langkah 5: Kirim respons sukses
-        res.status(201).json({ message: "Jawaban Anda berhasil dikumpulkan!", submission: newSubmission });
-
+        // Langkah 5: Kirim respons yang sesuai ke frontend
+        if (assignment.type === 'esai') {
+            res.status(201).json({
+                message: "Tugas esai Anda berhasil dikumpulkan!",
+                submissionType: 'esai'
+            });
+        } else { // 'pilgan'
+            res.status(201).json({
+                message: "Jawaban Anda berhasil dikumpulkan!",
+                submission: newSubmission,
+                submissionType: 'pilgan'
+            });
+        }
     } catch (error) {
         console.error("Gagal saat memproses pengumpulan tugas:", error);
         res.status(500).json({ message: "Terjadi kesalahan saat memproses jawaban Anda." });

@@ -7,7 +7,7 @@ import apiClient from '@/lib/axios';
 import toast from 'react-hot-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import QuizTimer from '@/components/quiz/QuizTimer';
-import { FaArrowLeft } from 'react-icons/fa';
+import { FaArrowLeft, FaEye } from 'react-icons/fa';
 
 // Definisikan tipe data
 interface Option {
@@ -158,7 +158,11 @@ export default function AssignmentPage() {
             <p className="text-gray-600 mt-2">{assignment.description}</p>
           </div>
           {isTeacher && (
-            <Link href={`/tugas/${assignment.id}/submissions`} className="bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-700 whitespace-nowrap">
+            <Link 
+              href={`/tugas/${assignment.id}/submissions`} 
+              className="flex items-center gap-2 bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-700 whitespace-nowrap transition-all transform hover:scale-105"
+            >
+              <FaEye />
               Lihat Pengumpulan
             </Link>
           )}
@@ -169,7 +173,6 @@ export default function AssignmentPage() {
       </div>
 
       {user?.role === 'siswa' && (
-        // Tag <form> sekarang hanya membungkus bagian soal
         <div className="bg-white p-6 rounded-lg text-gray-800 shadow-md">
             <form onSubmit={handleManualSubmit}>
                 <h2 className="text-xl font-semibold mb-6 border-b pb-3">Soal</h2>
@@ -213,7 +216,7 @@ export default function AssignmentPage() {
                             value={essayAnswers[question.id] || ''}
                             onChange={(e) => handleEssayChange(question.id, e.target.value)}
                             rows={8}
-                            className="mt-4 w-full p-3 border border-gray-300 rounded-md"
+                            className="mt-4 w-full p-3 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
                             placeholder={`Ketik jawaban untuk soal ${indexOfFirstQuestion + index + 1} di sini...`}
                             />
                         </div>
@@ -222,7 +225,6 @@ export default function AssignmentPage() {
                     </div>
                 )}
                 
-                {/* Tombol Kumpulkan hanya muncul di halaman terakhir dan berada di dalam form */}
                 {currentPage === totalPages && (
                     <div className="mt-8 pt-6 border-t flex justify-end">
                         <button
@@ -236,7 +238,6 @@ export default function AssignmentPage() {
                 )}
             </form>
             
-            {/* Navigasi dipindahkan ke luar form */}
             <div className="mt-8 pt-6 border-t flex justify-between items-center">
                 <button
                     type="button"
@@ -261,7 +262,6 @@ export default function AssignmentPage() {
                     </button>
                 )}
                 
-                {/* Placeholder untuk menjaga layout tetap sama saat tombol submit hilang */}
                 {currentPage === totalPages && <div style={{width: '120px'}}></div>}
             </div>
         </div>

@@ -2,7 +2,7 @@
 import { useRouter } from 'next/navigation';
 
 interface QuestionResult {
-  isCorrect: boolean;
+  isCorrect: boolean | null;
 }
 
 interface QuizNavigationProps {

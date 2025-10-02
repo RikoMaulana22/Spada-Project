@@ -23,7 +23,7 @@ export default function MyClassesSection({ isLoading, myClasses }: MyClassesSect
 
   return (
     <div className="bg-white p-6 rounded-lg shadow-md">
-      <h2 className="text-xl font-bold text-blue-900 border-b-2 border-yellow-400 pb-2 mb-4">
+      <h2 className="text-xl font-bold text-blue-900 border-b-2 border-gray-600 pb-2 mb-4">
         Kelas yang Anda Ikuti
       </h2>
       {isLoading ? (

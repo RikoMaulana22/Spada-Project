@@ -7,7 +7,7 @@ import toast from 'react-hot-toast';
 import { FaCheck, FaTimes, FaInfoCircle } from 'react-icons/fa';
 import QuizNavigation from '@/components/quiz/QuizNavigation';
 
-// Tipe data tidak perlu diubah, sudah sesuai
+// Tipe data disesuaikan dengan struktur dari backend
 interface ReviewData {
   id: number;
   score: number | null;
@@ -81,7 +81,7 @@ export default function SubmissionReviewPage() {
     const { assignment, selectedOptions, score, startedOn, completedOn, timeTakenMs } = reviewData;
     
     // ==================================================================
-    // PERBAIKAN 1 DI SINI
+    // PERBAIKAN 1: Akses objek 'question' yang benar
     // ==================================================================
     const questionResults = assignment.questions.map(assignmentQuestion => {
         const question = assignmentQuestion.question; // Ambil objek soal yang sebenarnya
@@ -110,7 +110,7 @@ export default function SubmissionReviewPage() {
                   {/* Tampilan Soal dan Jawaban */}
                   <div className="space-y-6">
                       {/* ================================================================== */}
-                      {/* PERBAIKAN 2 DI SINI */}
+                      {/* PERBAIKAN 2: Gunakan 'question' dari dalam map */}
                       {/* ================================================================== */}
                       {assignment.questions.map((assignmentQuestion, index) => {
                           const question = assignmentQuestion.question; // Ambil objek soal yang sebenarnya
@@ -128,7 +128,7 @@ export default function SubmissionReviewPage() {
                                   </div>
                                   <p className="mb-4">{question.questionText}</p>
                                   <div className="space-y-2">
-                                      {question.options.map(opt => { // Akses dari question.options
+                                      {question.options.map(opt => {
                                           const isSelected = studentAnswerId === opt.id;
                                           return (
                                               <div key={opt.id} className={`flex items-center gap-3 p-2 rounded ${isSelected ? 'bg-gray-200' : ''}`}>
