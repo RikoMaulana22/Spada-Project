@@ -55,7 +55,7 @@ export default function Header() {
             <nav className="container mx-auto px-4 py-2 flex justify-between items-center">
                 {/* Bagian Kiri: Logo */}
                 <div className="flex-1 flex justify-start">
-                    <Link href="/" className="flex items-center">
+                    <Link href="/logosekolah.ico" className="flex items-center">
                         {settings?.headerLogo ? (
                             <Image 
                                 src={settings.headerLogo} 

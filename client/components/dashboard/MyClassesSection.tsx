@@ -18,7 +18,6 @@ interface MyClassesSectionProps {
 }
 
 export default function MyClassesSection({ isLoading, myClasses }: MyClassesSectionProps) {
-  // Ambil URL backend dari environment variable untuk membangun path gambar
   const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
 
   return (

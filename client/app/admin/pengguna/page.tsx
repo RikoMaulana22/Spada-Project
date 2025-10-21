@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, ChangeEvent } from 'react';
 import apiClient from '@/lib/axios';
 import { User } from '@/types';
-import Link from 'next/link'; // <-- 1. Impor komponen Link
+import Link from 'next/link';
 import toast from 'react-hot-toast';
 import AddUserModal from '@/components/dashboard/admin/AddUserModal';
 import EditUserModal from '@/components/dashboard/admin/EditUserModal';
@@ -11,7 +11,7 @@ import EditUserModal from '@/components/dashboard/admin/EditUserModal';
 export default function ManageUsersPage() {
     const [users, setUsers] = useState<User[]>([]);
     const [isLoading, setIsLoading] = useState(true);
-    const [filterRole, setFilterRole] = useState<'semua' | 'guru' | 'siswa'>('semua');
+    const [filterRole, setFilterRole] = useState<'semua' | 'guru' | 'siswa' | 'wali_kelas'>('semua');
 
     // State untuk mengontrol modal
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -41,18 +41,18 @@ export default function ManageUsersPage() {
         setIsEditModalOpen(true);
     };
 
-    const handleDelete = async (userId: number) => {
-        if (window.confirm('Apakah Anda yakin ingin menghapus pengguna ini?')) {
-            const loadingToast = toast.loading('Menghapus pengguna...');
+    const handleDelete = useCallback(async (userId: number | string) => {
+        if (window.confirm('Apakah Anda yakin ingin menghapus pengguna ini? Tindakan ini tidak dapat diurungkan.')) {
             try {
                 await apiClient.delete(`/admin/users/${userId}`);
-                toast.success('Pengguna berhasil dihapus.', { id: loadingToast });
-                fetchData();
-            } catch (error: any) {
-                toast.error(error.response?.data?.message || 'Gagal menghapus pengguna.', { id: loadingToast });
+                toast.success('Pengguna berhasil dihapus.');
+                fetchData(); 
+            } catch (error) {
+                console.error("Gagal menghapus pengguna:", error);
+                toast.error('Gagal menghapus pengguna.');
             }
         }
-    };
+    }, [fetchData]);
 
     return (
         <>
@@ -72,62 +72,67 @@ export default function ManageUsersPage() {
             <div className="container mx-auto p-4 md:p-8 text-gray-800">
                 <div className="flex justify-between items-center mb-6">
                     <h1 className="text-3xl text-gray-800 font-bold">Manajemen Pengguna</h1>
-                    <Link 
-                        href="/admin/users/import"
-                        className="btn-secondary whitespace-nowrappx-4 py-2 bg-gray-600 text-white font-semibold rounded-lg hover:bg-green-700" // Gunakan style sekunder
-                    >
-                        Impor Massal
-                    </Link>
-                    <button onClick={() => setIsAddModalOpen(true)} className="px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700">
-                        + Tambah Pengguna
-                    </button>
+                    <div className="flex items-center gap-4">
+                        <Link 
+                            href="/admin/users/import"
+                            className="btn-secondary whitespace-nowrap px-4 py-2 bg-gray-600 text-white font-semibold rounded-lg hover:bg-green-700"
+                        >
+                            Impor Massal
+                        </Link>
+                        <button onClick={() => setIsAddModalOpen(true)} className="px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700">
+                            + Tambah Pengguna
+                        </button>
+                    </div>
                 </div>
-
-                
 
                 <div className="mb-4 text-gray-600">
                     <select 
                         value={filterRole} 
-                        onChange={(e: ChangeEvent<HTMLSelectElement>) => setFilterRole(e.target.value as any)}
+                        onChange={(e: ChangeEvent<HTMLSelectElement>) => setFilterRole(e.target.value as typeof filterRole)}
                         className="p-2 border rounded-md"
                     >
                         <option value="semua">Semua Peran</option>
                         <option value="guru">Guru</option>
                         <option value="siswa">Siswa</option>
-                         <option value="wali_kelas">Wali Kelas</option>
+                        <option value="wali_kelas">Wali Kelas</option>
                     </select>
                 </div>
 
                 <div className="bg-white p-6 rounded-lg shadow-md overflow-x-auto">
-    <table className="w-full text-left text-gray-800 border border-gray-300">
-        <thead>
-            <tr className="bg-yellow-200 text-gray-700 border font-bold font-large text-left text-l uppercase">
-                <th className="py-2 px-3 border border-gray-300">Nama Lengkap</th>
-                <th className="py-2 px-3 border border-gray-300">Username</th>
-                <th className="py-2 px-3 border border-gray-300">Peran</th>
-                <th className="py-2 px-3 border border-gray-300">Aksi</th>
-            </tr>
-        </thead>
-        <tbody>
-            {isLoading ? (
-                <tr>
-                    <td colSpan={4} className="py-4 text-center border border-gray-300">Memuat data...</td>
-                </tr>
-            ) : users.map(user => (
-                <tr key={user.id} className="hover:bg-gray-50">
-                    <td className="py-3 px-3 border border-gray-300">{user.fullName}</td>
-                    <td className="py-3 px-3 border border-gray-300">{user.username}</td>
-                    <td className="py-3 px-3 border border-gray-300 capitalize">{user.role}</td>
-                    <td className="py-3 px-3 border border-gray-300">
-                        <button onClick={() => handleEdit(user)} className="text-blue-600 hover:underline mr-4">Edit</button>
-                        <button onClick={() => handleDelete(user.id)} className="text-red-600 hover:underline">Hapus</button>
-                    </td>
-                </tr>
-            ))}
-        </tbody>
-    </table>
-</div>
-
+                    <table className="w-full text-left text-gray-800 border border-gray-300">
+                        <thead>
+                            <tr className="bg-yellow-200 text-gray-700 border font-bold font-large text-left text-l uppercase">
+                                <th className="py-2 px-3 border border-gray-300">Nama Lengkap</th>
+                                <th className="py-2 px-3 border border-gray-300">Username</th>
+                                <th className="py-2 px-3 border border-gray-300">Peran</th>
+                                <th className="py-2 px-3 border border-gray-300">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {isLoading ? (
+                                <tr>
+                                    <td colSpan={4} className="py-4 text-center border border-gray-300">Memuat data...</td>
+                                </tr>
+                            ) : users.length === 0 ? (
+                                <tr>
+                                    <td colSpan={4} className="py-4 text-center border border-gray-300">Tidak ada pengguna ditemukan.</td>
+                                </tr>
+                            ) : (
+                                users.map(user => (
+                                    <tr key={user.id} className="hover:bg-gray-50">
+                                        <td className="py-3 px-3 border border-gray-300">{user.fullName}</td>
+                                        <td className="py-3 px-3 border border-gray-300">{user.username}</td>
+                                        <td className="py-3 px-3 border border-gray-300 capitalize">{user.role}</td>
+                                        <td className="py-3 px-3 border border-gray-300">
+                                            <button onClick={() => handleEdit(user)} className="text-blue-600 hover:underline mr-4">Edit</button>
+                                            <button onClick={() => handleDelete(user.id)} className="text-red-600 hover:underline">Hapus</button>
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </>
     );

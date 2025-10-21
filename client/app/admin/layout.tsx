@@ -2,10 +2,10 @@
 
 import { useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useRouter, usePathname } from 'next/navigation'; // <-- 1. Impor usePathname
+import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { FaUsers, FaBook, FaChartBar, FaFileAlt, FaRss, FaSignOutAlt, FaCog, FaCalendarCheck,FaChalkboardTeacher  } from 'react-icons/fa'; // Tambahkan FaCog untuk Pengaturan
-import { User as GlobalUserType, Settings } from '@/types'; // Asumsikan Settings ada di types
+import { FaUsers, FaBook, FaChartBar, FaFileAlt, FaRss, FaSignOutAlt, FaCog, FaCalendarCheck, FaChalkboardTeacher } from 'react-icons/fa';
+import { User as GlobalUserType, Settings } from '@/types';
 
 export default function AdminLayout({
   children,
@@ -14,7 +14,7 @@ export default function AdminLayout({
 }) {
   const { user, isLoading, settings, logout } = useAuth() as { user: GlobalUserType | null, isLoading: boolean, settings: Settings | null, logout: () => void };
   const router = useRouter();
-  const pathname = usePathname(); 
+  const pathname = usePathname();
 
   useEffect(() => {
     if (isLoading) {
@@ -34,7 +34,7 @@ export default function AdminLayout({
 
   }, [user, isLoading, router, pathname]);
 
-  // --- 4. LOGIKA TAMPILAN 
+  // --- LOGIKA TAMPILAN 
 
   // Jika kita berada di halaman login, langsung tampilkan isinya (form login).
   if (pathname === '/admin/login') {
@@ -57,7 +57,7 @@ export default function AdminLayout({
             <FaUsers /><span>Pengguna</span>
           </Link>
           <Link href="/admin/kelas" className={`flex items-center gap-3 p-2 rounded-md text-sm ${pathname.startsWith('/admin/kelas') ? 'bg-gray-900' : 'hover:bg-gray-700'}`}>
-          <FaChalkboardTeacher /><span>Kelola Kelas</span>
+            <FaChalkboardTeacher /><span>Kelola Kelas</span>
           </Link>
           <Link href="/admin/mapel" className={`flex items-center gap-3 p-2 rounded-md text-sm ${pathname.startsWith('/admin/mapel') ? 'bg-gray-900' : 'hover:bg-gray-700'}`}>
             <FaBook /><span>Mata Pelajaran</span>
@@ -82,9 +82,9 @@ export default function AdminLayout({
         </nav>
         
         <div className="mt-auto space-y-2">
-           <Link href="/admin/pengaturan" className={`flex items-center gap-3 p-2 rounded-md text-sm ${pathname.startsWith('/admin/pengaturan') ? 'bg-gray-900' : 'hover:bg-gray-700'}`}>
-            <FaCog /><span>Pengaturan</span>
-          </Link>
+            <Link href="/admin/pengaturan" className={`flex items-center gap-3 p-2 rounded-md text-sm ${pathname.startsWith('/admin/pengaturan') ? 'bg-gray-900' : 'hover:bg-gray-700'}`}>
+             <FaCog /><span>Pengaturan</span>
+            </Link>
           <button onClick={logout} className="w-full flex items-center gap-3 p-2 rounded-md text-red-400 hover:bg-red-500 hover:text-white text-sm">
             <FaSignOutAlt />
             <span>Logout</span>

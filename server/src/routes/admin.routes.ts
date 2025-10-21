@@ -56,7 +56,6 @@ router.get('/classes', authenticate, checkRole('admin'), getAllClasses);
 router.get('/teachers', authenticate, checkRole('admin'), getAllTeachers);
 router.get('/subjects', authenticate, checkRole('admin'), getAllSubjects);
 router.post('/classes', authenticate, checkRole('admin'), createClass);
-router.get('/classes', authenticate, checkRole('admin'), getAllClasses);
 router.put('/classes/:classId/assign-homeroom', authenticate, checkRole('admin'), assignHomeroomTeacher);;
 router.get(
     '/classes/available-for-homeroom', 

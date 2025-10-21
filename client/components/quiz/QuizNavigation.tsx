@@ -12,7 +12,7 @@ interface QuizNavigationProps {
 export default function QuizNavigation({ results }: QuizNavigationProps) {
   const router = useRouter();
   const handleFinishReview = () => {
-    router.push('/kelas/1'); // Arahkan ke halaman dashboard
+    router.push('/dashboard'); // Arahkan ke halaman dashboard
   };
 
   return (

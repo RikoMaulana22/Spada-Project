@@ -71,7 +71,7 @@ export default function AddScheduleModal({ isOpen, onClose, onScheduleAdded }: A
         setIsLoading(true);
         const loadingToast = toast.loading('Menyimpan jadwal...');
         try {
-            await apiClient.post('/admin/schedules', formData); // Pastikan endpoint benar
+            await apiClient.post('/schedules', formData); // Pastikan endpoint benar
             toast.success('Jadwal baru berhasil ditambahkan!', { id: loadingToast });
             onScheduleAdded();
             onClose();

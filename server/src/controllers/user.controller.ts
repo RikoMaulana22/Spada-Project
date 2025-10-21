@@ -101,3 +101,5 @@ export const changePassword = async (req: AuthRequest, res: Response) => {
         res.status(500).json({ message: 'Gagal mengubah password.' });
     }
 };
+
+

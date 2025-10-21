@@ -39,7 +39,7 @@ export default function AddSubjectModal({ isOpen, onClose, onSubjectAdded }: Add
     setIsLoading(true);
     const loadingToast = toast.loading('Menambahkan mata pelajaran...');
     try {
-      await apiClient.post('/admin/subjects', formData);
+      await apiClient.post('/subjects', formData);
       toast.success('Mata pelajaran baru berhasil ditambahkan!', { id: loadingToast });
       onSubjectAdded();
       onClose(); // handleClose tidak perlu dipanggil karena onClose sudah cukup dan state direset oleh useEffect

@@ -341,36 +341,48 @@ export const deleteClass = async (req: Request, res: Response) => {
 };
 
 // --- FUNGSI DELETE BARU DENGAN PENGECEKAN ---
-export const deleteUser = async (req: AuthRequest, res: Response): Promise<void> => {
-    const { id } = req.params;
-    const adminId = req.user?.userId;
-    const userIdToDelete = Number(id);
+// Lokasi: server/src/controllers/admin.controller.ts
 
-    if (userIdToDelete === adminId) {
-        res.status(400).json({ message: "Anda tidak dapat menghapus akun Anda sendiri." });
-        return;
+export const deleteUser = async (req: Request, res: Response) => {
+    // Ambil ID dari parameter URL dan ubah menjadi angka
+    const userId = parseInt(req.params.id, 10);
+
+    // Validasi jika ID yang diberikan tidak valid (bukan angka)
+    if (isNaN(userId)) {
+        return res.status(400).json({ message: 'User ID tidak valid.' });
     }
+
     try {
-        const teachingClasses = await prisma.class.count({ where: { teacherId: userIdToDelete } });
-        if (teachingClasses > 0) {
-            res.status(400).json({ message: `Gagal: Pengguna ini masih menjadi guru di ${teachingClasses} kelas.` });
-            return;
+        // Cek dulu apakah pengguna dengan ID tersebut benar-benar ada
+        const existingUser = await prisma.user.findUnique({
+            where: { id: userId },
+        });
+
+        // Jika tidak ditemukan, kirim error 404 (Not Found)
+        if (!existingUser) {
+            return res.status(404).json({ message: 'Pengguna tidak ditemukan.' });
         }
-        const announcements = await prisma.announcement.count({ where: { authorId: userIdToDelete } });
-        if (announcements > 0) {
-            res.status(400).json({ message: `Gagal: Pengguna ini adalah penulis dari ${announcements} pengumuman.` });
-            return;
-        }
-        const schedules = await prisma.schedule.count({ where: { teacherId: userIdToDelete } });
-        if (schedules > 0) {
-            res.status(400).json({ message: `Gagal: Pengguna ini masih memiliki ${schedules} jadwal mengajar.` });
-            return;
+
+        // PERINTAH PENTING: Hapus pengguna dari database
+        await prisma.user.delete({
+            where: {
+                id: userId,
+            },
+        });
+
+        // Kirim respons bahwa pengguna berhasil dihapus
+        return res.status(200).json({ message: 'Pengguna berhasil dihapus.' });
+
+    } catch (error: any) {
+        console.error("Gagal menghapus pengguna:", error);
+        
+        // Menangani error jika pengguna terhubung dengan data lain (misal: kelas)
+        if (error.code === 'P2003' || error.code === 'P2025') {
+             return res.status(409).json({ message: 'Gagal menghapus: Pengguna ini masih terhubung dengan data lain.' });
         }
         
-        await prisma.user.delete({ where: { id: userIdToDelete } });
-        res.status(200).json({ message: 'Pengguna berhasil dihapus.' });
-    } catch (error) {
-        res.status(500).json({ message: 'Gagal menghapus pengguna.' });
+        // Error umum untuk masalah lainnya
+        return res.status(500).json({ message: 'Terjadi kesalahan pada server.' });
     }
 };
 // --- MANAJEMEN MATERI GLOBAL ---

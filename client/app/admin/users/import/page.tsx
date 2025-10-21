@@ -28,7 +28,7 @@ const InstructionsCard = () => {
                 fullName,username,email,password,nisn,homeroomClassId
             </code>
             
-            <a href={`/${templateFileName}`} download className="text-blue-600 hover:text-blue-800 hover:underline mt-4 inline-block font-medium transition-colors">
+            <a href={`/contoh_template.csv`} download className="text-blue-600 hover:text-blue-800 hover:underline mt-4 inline-block font-medium transition-colors">
                 Download Template Universal
             </a>
         </div>
