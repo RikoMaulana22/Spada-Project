@@ -9,6 +9,7 @@ export const metadata: Metadata = {
   title: "SMPN Satu Atap 1 Way Tenong - Sekolah Unggulan",
   description:
     "SMPN Satu Atap 1 Way Tenong - Membentuk generasi cerdas, berkarakter, dan berprestasi untuk masa depan Indonesia yang lebih baik.",
+    
 };
 
 export default function RootLayout({

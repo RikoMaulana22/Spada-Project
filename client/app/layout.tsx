@@ -33,8 +33,11 @@ export default function RootLayout({
 
   return (
     <html lang="en" className="h-full">
+      <head>
+          <link rel="icon" href="/logosekolah.ico" /> 
+        </head>
       <body className={`${inter.className} flex flex-col h-full bg-gray-100`}
-      suppressHydrationWarning={true}
+        suppressHydrationWarning={true}
       >
         <AuthProvider>
           <Toaster 
@@ -45,8 +48,18 @@ export default function RootLayout({
           {showPublicLayout ? (
             <>
               <Header />
-              <main className="flex-grow container mx-auto px-4 sm:px-6 py-8">
-                <div className="bg-white shadow-md rounded-lg p-6">
+              {/* RESPONSIVE CHANGE 1: 
+                - 'container' sudah menangani padding horizontal (px) secara otomatis.
+                - 'py' (padding vertikal) dibuat responsif: 
+                  kecil di mobile (py-4), sedang di tablet (md:py-6), besar di desktop (lg:py-8).
+              */}
+              <main className="flex-grow container mx-auto py-4 md:py-6 lg:py-8">
+                {/* RESPONSIVE CHANGE 2: 
+                  - Padding internal (p) dibuat responsif: 
+                    p-4 di mobile, p-6 di tablet, p-8 di desktop.
+                  - Ini memberi lebih banyak ruang untuk konten di layar kecil.
+                */}
+                <div className="bg-white shadow-md rounded-lg p-4 sm:p-6 md:p-8">
                   {children}
                 </div>
               </main>
