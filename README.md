@@ -1,43 +1,48 @@
-🎓 SPADA Project - Sistem Pembelajaran Daring
-SPADA Project adalah platform Learning Management System (LMS) modern yang komprehensif, dirancang untuk memfasilitasi kegiatan belajar mengajar secara digital. Platform ini menghubungkan Administrator, Guru, Siswa, dan Wali Kelas dalam satu ekosistem terintegrasi untuk manajemen kelas, absensi, materi, tugas, dan penilaian.
+🎓 SPADA Project — Modern Learning Management System (LMS)
 
-🚀 Fitur Utama
-Sistem ini memiliki fitur yang dibedakan berdasarkan peran pengguna (Role-Based Access Control):
+SPADA Project adalah platform Learning Management System (LMS) modern dan komprehensif yang dirancang untuk mendukung proses belajar mengajar secara digital. Sistem ini menyatukan Administrator, Guru, Siswa, dan Wali Kelas dalam satu ekosistem terpadu untuk mengelola kelas, absensi, materi, tugas, nilai, dan aktivitas akademik lainnya.
 
+🚀 Fitur Utama (Role-Based Access Control)
 👨‍💻 Administrator
-Manajemen Pengguna: Tambah, edit, hapus, dan import pengguna (Siswa & Guru) secara massal (CSV).
 
-Manajemen Akademik: Pengaturan Kelas, Mata Pelajaran, dan Jadwal Pelajaran.
+Manajemen Pengguna: Tambah, edit, hapus, dan import data Siswa/Guru secara massal melalui CSV.
 
-Monitoring: Dashboard statistik sekolah dan log aktivitas.
+Manajemen Akademik: Pengaturan kelas, mata pelajaran, dan jadwal pelajaran.
 
-Pengaturan Sistem: Konfigurasi global aplikasi.
+Monitoring & Dashboard: Statistik akademik dan log aktivitas sekolah.
 
-👨‍🏫 Guru (Teacher)
-Manajemen Kelas: Upload materi pelajaran (PDF, PPT, Video, Link YouTube).
+Pengaturan Sistem: Konfigurasi global LMS.
+
+👨‍🏫 Guru
+
+Manajemen Kelas: Upload materi (PDF, PPT, Video, Link YouTube).
 
 Tugas & Ujian: Membuat tugas, kuis (Bank Soal), dan memberikan penilaian.
 
-Absensi: Membuka sesi absensi dan memvalidasi kehadiran siswa.
+Absensi: Membuka sesi absensi serta memvalidasi kehadiran siswa.
 
-Rekap Nilai: Melihat dan mengelola transkrip nilai siswa.
+Rekap Nilai: Melihat dan mengelola nilai siswa.
 
-👨‍🎓 Siswa (Student)
-Dashboard Pembelajaran: Akses materi pelajaran dan jadwal harian.
+👨‍🎓 Siswa
 
-Pengumpulan Tugas: Upload tugas dan mengerjakan kuis secara online.
+Dashboard Pembelajaran: Mengakses materi, jadwal, dan pengumuman.
 
-Absensi Digital: Melakukan absensi dengan bukti (foto/dokumen) dan lokasi.
+Tugas & Kuis: Upload tugas dan mengerjakan kuis secara online.
 
-Riwayat Akademik: Melihat nilai dan umpan balik dari guru.
+Absensi Digital: Mengisi absensi dengan bukti (foto/dokumen) dan lokasi.
+
+Riwayat Akademik: Melihat nilai, progres belajar, dan feedback guru.
 
 👨‍💼 Wali Kelas
-Monitoring Kelas: Memantau kehadiran dan perkembangan siswa di kelas perwaliannya.
+
+Monitoring Kelas: Memantau kehadiran serta perkembangan akademik siswa.
 
 🛠️ Teknologi yang Digunakan
-Proyek ini dibangun menggunakan arsitektur Monorepo (terpisah antara Client, Server, dan Landing Page).
 
-Frontend (Client & Landing)
+SPADA Project menggunakan arsitektur Monorepo, memisahkan Client, Server, dan Landing Page untuk skalabilitas.
+
+🖥️ Frontend (Client & Landing Page)
+
 Framework: Next.js 14+ (App Router)
 
 Language: TypeScript
@@ -48,107 +53,114 @@ State Management: React Context / Hooks
 
 HTTP Client: Axios
 
-Backend (Server)
+🔧 Backend (API Server)
+
 Runtime: Node.js
 
 Framework: Express.js
 
 Language: TypeScript
 
-Database ORM: Prisma
+ORM: Prisma
 
-Database: (MySQL/PostgreSQL - sesuaikan dengan schema.prisma)
+Database: MySQL/PostgreSQL
 
-Authentication: JWT (JSON Web Token)
+Authentication: JWT
 
 File Upload: Multer
 
 📂 Struktur Proyek
-Bash
-
 spada-project/
-├── client/         # Aplikasi Frontend (Dashboard LMS) berbasis Next.js
-├── server/         # API Backend (Node.js/Express + Prisma)
-├── landing/        # Halaman Landing Page / Company Profile Sekolah
+├── client/     # Dashboard LMS (Next.js)
+├── server/     # REST API (Node.js, Express, Prisma)
+├── landing/    # Landing Page / Company Profile Sekolah
 └── ...
-⚙️ Instalasi dan Cara Menjalankan
-Ikuti langkah-langkah berikut untuk menjalankan proyek di komputer lokal Anda.
 
-Prasyarat
-Node.js (v18 atau terbaru)
+⚙️ Instalasi & Menjalankan Proyek
+📌 Prasyarat
 
-NPM atau Yarn
+Node.js v18+
 
-Database (MySQL atau PostgreSQL sesuai konfigurasi Prisma)
+NPM / Yarn
 
-1. Setup Backend (Server)
-Masuk ke folder server dan install dependensi:
+MySQL atau PostgreSQL
 
-Bash
+Prisma CLI
 
+🖥️ Setup Backend (Server)
+1. Install Dependensi
 cd server
 npm install
-Buat file .env di dalam folder server/ dan sesuaikan konfigurasinya:
 
-Code snippet
+2. Konfigurasi Environment
+
+Buat file .env di folder server/:
 
 PORT=5000
 DATABASE_URL="mysql://user:password@localhost:3306/spada_db"
 JWT_SECRET="rahasia_super_aman"
-# Tambahkan variabel lain jika diperlukan
-Jalankan migrasi database (Prisma):
 
-Bash
-
+3. Migrasi Database (Prisma)
 npx prisma migrate dev --name init
-npx prisma db seed # (Opsional) Jika ada script seeding data awal
-Jalankan server:
+npx prisma db seed   # Opsional
 
-Bash
-
+4. Jalankan Server
 npm run dev
-Server akan berjalan di http://localhost:5000
 
-2. Setup Frontend (Client)
-Buka terminal baru, masuk ke folder client:
 
-Bash
+Server berjalan di:
+👉 http://localhost:5000
 
+🌐 Setup Frontend (Client)
+1. Install Dependensi
 cd client
 npm install
-Buat file .env.local di dalam folder client/:
 
-Code snippet
+2. Konfigurasi Environment
+
+Buat .env.local di client/:
 
 NEXT_PUBLIC_API_URL=http://localhost:5000/api
-# Konfigurasi lain yang dibutuhkan client
-Jalankan aplikasi client:
 
-Bash
-
+3. Jalankan Client
 npm run dev
-Aplikasi akan berjalan di http://localhost:3000
 
-3. Setup Landing Page 
-Jika ingin menjalankan halaman depan:
 
-Bash
+Client berjalan di:
+👉 http://localhost:3000
 
+🏠 Setup Landing Page
 cd landing
 npm install
 npm run dev
-🧪 Pengembangan & Kontribusi
-Kami sangat terbuka untuk kontribusi! Jika Anda ingin menambahkan fitur atau memperbaiki bug:
 
-Fork repositori ini.
 
-Buat branch fitur baru (git checkout -b fitur-keren).
+Landing Page berjalan di port default Next.js.
 
-Commit perubahan Anda (git commit -m 'Menambahkan fitur keren').
+🧪 Kontribusi
 
-Push ke branch tersebut (git push origin fitur-keren).
+Kami terbuka untuk kontribusi!
 
-Buat Pull Request.
+Fork repository
+
+Buat branch baru
+
+git checkout -b fitur-baru
+
+
+Commit perubahan
+
+git commit -m "Menambahkan fitur baru"
+
+
+Push
+
+git push origin fitur-baru
+
+
+Buat Pull Request
 
 📄 Lisensi
-Dibuat dengan profesional oleh Riko Maulana Al Habib
+
+Dikembangkan secara profesional oleh Riko Maulana Al Habib.
+Hak cipta & lisensi mengikuti ketentuan repository ini.
